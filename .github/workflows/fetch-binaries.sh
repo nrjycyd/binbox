@@ -38,8 +38,8 @@ for ((i=0; i<count; i++)); do
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
 
-      # 调整后的目标目录：keyword 作为文件夹名
-      target_dir="$target_base/$kw"
+      # 新的三层目录结构：target_base/name/keyword/
+      target_dir="$target_base/$name/$kw"
       mkdir -p "$target_dir"
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
@@ -68,23 +68,12 @@ for ((i=0; i<count; i++)); do
         done
         shopt -u dotglob
 
-        # 将平铺后的文件移动到目标目录，统一命名为 name.type
-        # 如果解压后只有一个可执行文件，直接命名为 name
-        # 如果解压后有多个文件，保持原文件名但放在 name 目录下
-        file_count=$(find "$flat_tmp" -type f | wc -l)
-        
-        if [[ $file_count -eq 1 ]]; then
-          # 只有一个文件，重命名为 name
-          single_file=$(find "$flat_tmp" -type f | head -n1)
-          mv -f "$single_file" "$target_dir/$name"
-          chmod +x "$target_dir/$name"
-        else
-          # 多个文件，创建 name 目录存放
-          mv -f "$flat_tmp"/* "$target_dir/"
-          # 设置可执行权限
-          binpath=$(find "$target_dir" -type f -name "$exec*" 2>/dev/null | head -n1)
-          [[ -n "$binpath" ]] && chmod +x "$binpath"
-        fi
+        # 将解压后的文件移动到目标目录
+        mv -f "$flat_tmp"/* "$target_dir/"
+
+        # 设置可执行权限
+        binpath=$(find "$target_dir" -type f -name "$exec*" 2>/dev/null | head -n1)
+        [[ -n "$binpath" ]] && chmod +x "$binpath"
 
         # 清理临时目录
         rm -rf "$extract_tmp" "$flat_tmp"
