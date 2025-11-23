@@ -1,4 +1,4 @@
-# SmartDNS 高级分流配置项目说明书
+# SmartDNS 分流配置说明书
 
 
 
@@ -174,3 +174,4 @@ Bash
 ```
 0 4 * * * /bin/sh /etc/smartdns/smartdns_rules_updata.sh >> /var/log/smartdns_update_cron.log 2>&1
 ```
+
