@@ -9,7 +9,7 @@
 
 <img width="2880" height="1530" alt="image" src="https://github.com/user-attachments/assets/27ed87ac-0f81-457a-95e2-363d26d78d76" />
 
-本项目基于 **SmartDNS** 构建，旨在实现高性能的本地 DNS 解析服务。通过策略分流（Split-Routing），实现以下目标：
+本分流方案基于 **SmartDNS** 构建，旨在实现高性能的本地 DNS 解析服务。通过策略分流（Split-Routing），实现以下目标：
 
 - **国内加速**：国内域名使用多个优选公共 DNS 并发解析，并优选最快 IP。
 - **海外分流**：国外域名匹配代理列表，或通过默认上游处理。
@@ -175,5 +175,6 @@ Bash
 ```
 0 4 * * * /bin/sh /etc/smartdns/smartdns_rules_updata.sh >> /var/log/smartdns_update_cron.log 2>&1
 ```
+
 
 
