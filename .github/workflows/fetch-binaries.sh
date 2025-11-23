@@ -19,7 +19,7 @@ for ((i=0; i<count; i++)); do
   keep_pkg=$(yq -r ".binaries[$i].keep_pkg" "$CONFIG_FILE")
   target_base=$(yq -r ".binaries[$i].target_base // \"bin\"" "$CONFIG_FILE")
 
-  mkdir -p "$BASE_DIR/${name}_tmp" "$target_base"
+  mkdir -p "$BASE_DIR/${name}_tmp"
 
   echo "🟩 更新 $name..."
   release_json=$(curl -s "https://api.github.com/repos/${repo}/releases/latest")
@@ -38,48 +38,73 @@ for ((i=0; i<count; i++)); do
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
 
-      target_dir="$target_base/$name/$kw"
+      # 调整后的目标目录：keyword 作为文件夹名
+      target_dir="$target_base/$kw"
       mkdir -p "$target_dir"
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
         echo "    📂 解压 $ft"
-        if [[ "$ft" == "zip" ]]; then unzip -qo "$pkgfile" -d "$target_dir"; fi
-        if [[ "$ft" == "tar.gz" ]]; then tar -xzf "$pkgfile" -C "$target_dir"; fi
+        
+        # 创建临时解压目录
+        extract_tmp="$BASE_DIR/${name}_tmp/extract_$kw"
+        mkdir -p "$extract_tmp"
+        
+        if [[ "$ft" == "zip" ]]; then unzip -qo "$pkgfile" -d "$extract_tmp"; fi
+        if [[ "$ft" == "tar.gz" ]]; then tar -xzf "$pkgfile" -C "$extract_tmp"; fi
 
-        # 平铺文件
+        # 平铺文件到临时目录
         shopt -s dotglob
-        for item in "$target_dir"/*; do
+        flat_tmp="$BASE_DIR/${name}_tmp/flat_$kw"
+        mkdir -p "$flat_tmp"
+        
+        for item in "$extract_tmp"/*; do
           if [[ -d "$item" ]]; then
             for sub in "$item"/*; do
-              # 如果已存在文件，覆盖
-              mv -f "$sub" "$target_dir"/
+              mv -f "$sub" "$flat_tmp"/
             done
-            rmdir "$item" || true
+          else
+            mv -f "$item" "$flat_tmp"/
           fi
         done
         shopt -u dotglob
 
-        # 保留压缩包
+        # 将平铺后的文件移动到目标目录，统一命名为 name.type
+        # 如果解压后只有一个可执行文件，直接命名为 name
+        # 如果解压后有多个文件，保持原文件名但放在 name 目录下
+        file_count=$(find "$flat_tmp" -type f | wc -l)
+        
+        if [[ $file_count -eq 1 ]]; then
+          # 只有一个文件，重命名为 name
+          single_file=$(find "$flat_tmp" -type f | head -n1)
+          mv -f "$single_file" "$target_dir/$name"
+          chmod +x "$target_dir/$name"
+        else
+          # 多个文件，创建 name 目录存放
+          mv -f "$flat_tmp"/* "$target_dir/"
+          # 设置可执行权限
+          binpath=$(find "$target_dir" -type f -name "$exec*" 2>/dev/null | head -n1)
+          [[ -n "$binpath" ]] && chmod +x "$binpath"
+        fi
+
+        # 清理临时目录
+        rm -rf "$extract_tmp" "$flat_tmp"
+
+        # 保留压缩包（如果配置了 keep_pkg）
         keep_this=false
         for k in "${keep_types[@]}"; do [[ "$k" == "$ft" ]] && keep_this=true && break; done
         if [[ "$keep_this" == true ]]; then
-          mkdir -p "$target_base/$name"
-          cp -f "$pkgfile" "$target_base/$name/$kw.$ft"
+          cp -f "$pkgfile" "$target_dir/$name.$ft"
         fi
 
-        # 删除临时 pkgfile
+        # 删除临时下载的压缩包
         rm -f "$pkgfile"
 
       else
-        # 不解压文件 (deb/ipk)
-        target_file="$target_base/$name/$kw.$ft"
-        mkdir -p "$(dirname "$target_file")"
+        # 不解压的文件 (deb/ipk)，直接命名为 name.type
+        target_file="$target_dir/$name.$ft"
         mv -f "$pkgfile" "$target_file"
       fi
 
-      # 设置可执行权限
-      binpath=$(find "$target_base/$name/$kw" -type f -name "$exec*" 2>/dev/null | head -n1)
-      [[ -n "$binpath" ]] && chmod +x "$binpath"
     done
   done
   echo "✅ $name 更新完成"
