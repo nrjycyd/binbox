@@ -1,0 +1,3 @@
+# 灰名单 代理规则
+googleapis.com
+googleapis.cn
