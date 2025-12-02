@@ -2,7 +2,7 @@
 
 # =============================================
 # SmartDNS 域名列表自动更新脚本
-# 功能：下载直连/代理/拒绝/PCDN/HttpDNS列表，更新配置并重启服务
+# 功能：下载直连/代理/拒绝/Apple CN/Google CN/PCDN/HttpDNS列表，更新配置并重启服务
 # 特性：先下载到临时文件，全部成功后再覆盖
 # =============================================
 
@@ -14,6 +14,8 @@ REPO_URL="https://raw.githubusercontent.com/nrjycyd/smartdns-domain-lists/main/d
 TMP_DIRECT="/tmp/direct-list.tmp"
 TMP_PROXY="/tmp/proxy-list.tmp"
 TMP_REJECT="/tmp/reject-list.tmp"
+TMP_APPLE="/tmp/apple-cn.tmp"
+TMP_GOOGLE="/tmp/google-cn.tmp"
 TMP_PCDN="/tmp/pcdn-list.tmp"
 TMP_HTTPDNS="/tmp/httpdns-list.tmp"
 
@@ -21,6 +23,8 @@ TMP_HTTPDNS="/tmp/httpdns-list.tmp"
 FILE_DIRECT="$FILE_DIR/direct_list.txt"
 FILE_PROXY="$FILE_DIR/proxy_list.txt"
 FILE_REJECT="$FILE_DIR/reject_list.txt"
+FILE_APPLE="$FILE_DIR/apple_cn.txt"
+FILE_GOOGLE="$FILE_DIR/google_cn.txt"
 FILE_PCDN="$FILE_DIR/pcdn_list.txt"
 FILE_HTTPDNS="$FILE_DIR/httpdns_list.txt"
 
@@ -58,7 +62,7 @@ download_file() {
 
 # ============= 清理临时文件函数 =============
 cleanup_tmp() {
-    rm -f "$TMP_DIRECT" "$TMP_PROXY" "$TMP_REJECT" "$TMP_PCDN" "$TMP_HTTPDNS"
+    rm -f "$TMP_DIRECT" "$TMP_PROXY" "$TMP_REJECT" "$TMP_APPLE" "$TMP_GOOGLE" "$TMP_PCDN" "$TMP_HTTPDNS"
     echo "已清理临时文件" >> "$LOG_FILE"
 }
 
@@ -78,6 +82,14 @@ if [ $download_failed -eq 0 ] && ! download_file "$REPO_URL/proxy-list.txt" "$TM
 fi
 
 if [ $download_failed -eq 0 ] && ! download_file "$REPO_URL/reject-list.txt" "$TMP_REJECT"; then
+    download_failed=1
+fi
+
+if [ $download_failed -eq 0 ] && ! download_file "$REPO_URL/apple-cn.txt" "$TMP_APPLE"; then
+    download_failed=1
+fi
+
+if [ $download_failed -eq 0 ] && ! download_file "$REPO_URL/google-cn.txt" "$TMP_GOOGLE"; then
     download_failed=1
 fi
 
@@ -102,11 +114,24 @@ echo "所有文件下载完成，开始覆盖原文件..." >> "$LOG_FILE"
 mv -f "$TMP_DIRECT" "$FILE_DIRECT" && echo "已更新: direct_list.txt" >> "$LOG_FILE"
 mv -f "$TMP_PROXY" "$FILE_PROXY" && echo "已更新: proxy_list.txt" >> "$LOG_FILE"
 mv -f "$TMP_REJECT" "$FILE_REJECT" && echo "已更新: reject_list.txt" >> "$LOG_FILE"
+mv -f "$TMP_APPLE" "$FILE_APPLE" && echo "已更新: apple_cn.txt" >> "$LOG_FILE"
+mv -f "$TMP_GOOGLE" "$FILE_GOOGLE" && echo "已更新: google_cn.txt" >> "$LOG_FILE"
 mv -f "$TMP_PCDN" "$FILE_PCDN" && echo "已更新: pcdn_list.txt" >> "$LOG_FILE"
 mv -f "$TMP_HTTPDNS" "$FILE_HTTPDNS" && echo "已更新: httpdns_list.txt" >> "$LOG_FILE"
 
 echo "文件更新完成：" >> "$LOG_FILE"
 ls -lh "$FILE_DIR" | awk '{print "  " $0}' >> "$LOG_FILE"
+
+# ============= 统计域名数量 =============
+echo "" >> "$LOG_FILE"
+echo "域名列表统计：" >> "$LOG_FILE"
+echo "  direct_list.txt:  $(wc -l < "$FILE_DIRECT") 个域名" >> "$LOG_FILE"
+echo "  proxy_list.txt:   $(wc -l < "$FILE_PROXY") 个域名" >> "$LOG_FILE"
+echo "  reject_list.txt:  $(wc -l < "$FILE_REJECT") 个域名" >> "$LOG_FILE"
+echo "  apple_cn.txt:     $(wc -l < "$FILE_APPLE") 个域名" >> "$LOG_FILE"
+echo "  google_cn.txt:    $(wc -l < "$FILE_GOOGLE") 个域名" >> "$LOG_FILE"
+echo "  pcdn_list.txt:    $(wc -l < "$FILE_PCDN") 个域名" >> "$LOG_FILE"
+echo "  httpdns_list.txt: $(wc -l < "$FILE_HTTPDNS") 个域名" >> "$LOG_FILE"
 
 # ============= 服务管理 =============
 if systemctl is-active --quiet smartdns; then
@@ -127,4 +152,12 @@ echo "-------------------------------------" >> "$LOG_FILE"
 
 # 控制台输出
 echo "SmartDNS域名列表更新完成!"
+echo "详细信息："
+echo "  直连域名:  $(wc -l < "$FILE_DIRECT") 个"
+echo "  代理域名:  $(wc -l < "$FILE_PROXY") 个"
+echo "  拒绝域名:  $(wc -l < "$FILE_REJECT") 个"
+echo "  Apple CN:  $(wc -l < "$FILE_APPLE") 个"
+echo "  Google CN: $(wc -l < "$FILE_GOOGLE") 个"
+echo "  PCDN:      $(wc -l < "$FILE_PCDN") 个"
+echo "  HttpDNS:   $(wc -l < "$FILE_HTTPDNS") 个"
 echo "日志文件: $LOG_FILE"
