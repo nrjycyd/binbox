@@ -1,1 +1,8 @@
 # 白名单 直连规则
+cdn.jsdelivr.net
+test-ipv6.com
+pool.ntp.org
+qnap.com
+plex.tv
+51zmt.top
+cdn.sohucs.com
