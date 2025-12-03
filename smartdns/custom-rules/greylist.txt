@@ -1,3 +1,5 @@
 # 灰名单 代理规则
+ip-api.com
+get.acme.sh
 googleapis.com
 googleapis.cn
