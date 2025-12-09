@@ -9,6 +9,20 @@ BASE_DIR="/tmp/update_binaries"
 count=$(yq '.binaries | length' "$CONFIG_FILE")
 echo "📦 读取到 $count 个二进制任务"
 
+# 函数：移除压缩包后缀
+remove_archive_suffix() {
+  local filename=$1
+  # 移除 .tar.gz、.tar.bz2、.tar.xz 等
+  filename=${filename%.tar.gz}
+  filename=${filename%.tar.bz2}
+  filename=${filename%.tar.xz}
+  # 移除 .zip、.deb、.ipk 等
+  filename=${filename%.zip}
+  filename=${filename%.deb}
+  filename=${filename%.ipk}
+  echo "$filename"
+}
+
 for ((i=0; i<count; i++)); do
   name=$(yq -r ".binaries[$i].name" "$CONFIG_FILE")
   repo=$(yq -r ".binaries[$i].repo" "$CONFIG_FILE")
@@ -38,8 +52,11 @@ for ((i=0; i<count; i++)); do
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
 
+      # 获取文件名（不含扩展名）
+      basename_no_ext=$(remove_archive_suffix "$(basename "$url")")
+      
       # 新的三层目录结构：target_base/name/keyword/
-      target_dir="$target_base/$name/$kw"
+      target_dir="$target_base/$name/$basename_no_ext"
       mkdir -p "$target_dir"
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
