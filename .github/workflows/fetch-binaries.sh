@@ -9,11 +9,16 @@ BASE_DIR="/tmp/update_binaries"
 count=$(yq '.binaries | length' "$CONFIG_FILE")
 echo "📦 读取到 $count 个二进制任务"
 
-
-
 for ((i=0; i<count; i++)); do
-
-  rename=$(yq -r ".binaries[$i].rename // false" "$CONFIG_FILE")
+  name=$(yq -r ".binaries[$i].name" "$CONFIG_FILE")
+  repo=$(yq -r ".binaries[$i].repo" "$CONFIG_FILE")
+  keyword=$(yq -r ".binaries[$i].keyword" "$CONFIG_FILE")
+  exec=$(yq -r ".binaries[$i].exec" "$CONFIG_FILE")
+  type=$(yq -r ".binaries[$i].type" "$CONFIG_FILE")
+  extract=$(yq -r ".binaries[$i].extract" "$CONFIG_FILE")
+  keep_pkg=$(yq -r ".binaries[$i].keep_pkg" "$CONFIG_FILE")
+  target_base=$(yq -r ".binaries[$i].target_base // \"bin\"" "$CONFIG_FILE")
+  folder_rename=$(yq -r ".binaries[$i].folder_rename // false" "$CONFIG_FILE")
 
   mkdir -p "$BASE_DIR/${name}_tmp"
 
@@ -43,7 +48,7 @@ for ((i=0; i<count; i++)); do
       pkgfile="$BASE_DIR/${name}_tmp/$(basename "$url")"
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
-      
+
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
       mkdir -p "$target_dir"
