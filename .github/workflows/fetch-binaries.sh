@@ -9,33 +9,7 @@ BASE_DIR="/tmp/update_binaries"
 count=$(yq '.binaries | length' "$CONFIG_FILE")
 echo "📦 读取到 $count 个二进制任务"
 
-# 函数：检查字符串是否包含压缩包后缀
-has_archive_suffix() {
-  local str=$1
-  [[ "$str" =~ \.(zip|tar\.gz|tar\.bz2|tar\.xz|deb|ipk)$ ]]
-}
 
-# 函数：移除压缩包后缀
-remove_archive_suffix() {
-  local filename=$1
-  filename=${filename%.tar.gz}
-  filename=${filename%.tar.bz2}
-  filename=${filename%.tar.xz}
-  filename=${filename%.zip}
-  filename=${filename%.deb}
-  filename=${filename%.ipk}
-  echo "$filename"
-}
-
-# 函数：移除程序名前缀
-remove_name_prefix() {
-  local filename=$1
-  local prefix=$2
-  if [[ "$filename" == "$prefix"* ]]; then
-    filename=${filename#${prefix}-}
-  fi
-  echo "$filename"
-}
 
 for ((i=0; i<count; i++)); do
   name=$(yq -r ".binaries[$i].name" "$CONFIG_FILE")
@@ -46,6 +20,7 @@ for ((i=0; i<count; i++)); do
   extract=$(yq -r ".binaries[$i].extract" "$CONFIG_FILE")
   keep_pkg=$(yq -r ".binaries[$i].keep_pkg" "$CONFIG_FILE")
   target_base=$(yq -r ".binaries[$i].target_base // \"bin\"" "$CONFIG_FILE")
+  rename=$(yq -r ".binaries[$i].rename // false" "$CONFIG_FILE")
 
   mkdir -p "$BASE_DIR/${name}_tmp"
 
@@ -56,8 +31,18 @@ for ((i=0; i<count; i++)); do
   IFS='|' read -ra types <<< "$type"
   IFS='|' read -ra extract_types <<< "$extract"
   IFS='|' read -ra keep_types <<< "$keep_pkg"
+  IFS='|' read -ra renames <<< "$rename"
 
-  for kw in "${keywords[@]}"; do
+  for idx in "${!keywords[@]}"; do
+    kw="${keywords[$idx]}"
+    # 获取对应的 rename 值，如果不存在则使用 keyword
+    rename_val="${renames[$idx]}"
+    if [[ "$rename_val" == "false" || -z "$rename_val" ]]; then
+      folder_name="$kw"
+    else
+      folder_name="$rename_val"
+    fi
+
     for ft in "${types[@]}"; do
       url=$(echo "$release_json" | jq -r ".assets[] | select(.name | contains(\"${kw}\") and endswith(\"${ft}\")) | .browser_download_url" | head -n1)
       [[ -z "$url" ]] && continue
@@ -65,19 +50,6 @@ for ((i=0; i<count; i++)); do
       pkgfile="$BASE_DIR/${name}_tmp/$(basename "$url")"
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
-
-      # 获取下载文件的原始基础名称
-      origin_basename=$(basename "$url")
-      
-      # 判断keyword是否包含压缩包后缀
-      if has_archive_suffix "$kw"; then
-        # 包含压缩包后缀的情况：移除后缀和程序名前缀
-        folder_name=$(remove_archive_suffix "$origin_basename")
-        folder_name=$(remove_name_prefix "$folder_name" "$name")
-      else
-        # 不包含压缩包后缀的情况：保持keyword作为文件夹名
-        folder_name="$kw"
-      fi
       
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
