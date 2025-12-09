@@ -62,7 +62,7 @@ for ((i=0; i<count; i++)); do
         
         if [[ "$ft" == "zip" ]]; then unzip -qo "$pkgfile" -d "$extract_tmp"; fi
         if [[ "$ft" == "tar.gz" ]]; then tar -xzf "$pkgfile" -C "$extract_tmp"; fi
-        if [[ "$ft" == "gz" ]]; then gunzip -c "$pkgfile" > "$extract_tmp/$(basename "$pkgfile" .gz)"; fi
+        if [[ "$ft" == "gz" ]]; then gunzip -c "$pkgfile" > "$extract_tmp/$(basename "$pkgfile" .gz)" && chmod +x "$extract_tmp/$(basename "$pkgfile" .gz)"; fi
 
         # 平铺文件到临时目录
         shopt -s dotglob
