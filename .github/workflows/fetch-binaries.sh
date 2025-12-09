@@ -83,9 +83,19 @@ for ((i=0; i<count; i++)); do
         # 将解压后的文件移动到目标目录
         mv -f "$flat_tmp"/* "$target_dir/"
 
-        # 设置可执行权限
-        binpath=$(find "$target_dir" -type f -name "$exec*" 2>/dev/null | head -n1)
-        [[ -n "$binpath" ]] && chmod +x "$binpath"
+        # 设置可执行权限并重命名（对于 .gz 单文件）
+        if [[ "$ft" == "gz" ]]; then
+          # .gz 解压后是单个文件，重命名为 exec 名称
+          extracted_file=$(ls "$target_dir" | head -n1)
+          if [[ -n "$extracted_file" && "$extracted_file" != "$exec" ]]; then
+            mv -f "$target_dir/$extracted_file" "$target_dir/$exec"
+          fi
+          chmod +x "$target_dir/$exec"
+        else
+          # 其他格式，查找并设置可执行权限
+          binpath=$(find "$target_dir" -type f -name "$exec*" 2>/dev/null | head -n1)
+          [[ -n "$binpath" ]] && chmod +x "$binpath"
+        fi
 
         # 清理临时目录
         rm -rf "$extract_tmp" "$flat_tmp"
