@@ -12,14 +12,7 @@ echo "📦 读取到 $count 个二进制任务"
 
 
 for ((i=0; i<count; i++)); do
-  name=$(yq -r ".binaries[$i].name" "$CONFIG_FILE")
-  repo=$(yq -r ".binaries[$i].repo" "$CONFIG_FILE")
-  keyword=$(yq -r ".binaries[$i].keyword" "$CONFIG_FILE")
-  exec=$(yq -r ".binaries[$i].exec" "$CONFIG_FILE")
-  type=$(yq -r ".binaries[$i].type" "$CONFIG_FILE")
-  extract=$(yq -r ".binaries[$i].extract" "$CONFIG_FILE")
-  keep_pkg=$(yq -r ".binaries[$i].keep_pkg" "$CONFIG_FILE")
-  target_base=$(yq -r ".binaries[$i].target_base // \"bin\"" "$CONFIG_FILE")
+
   rename=$(yq -r ".binaries[$i].rename // false" "$CONFIG_FILE")
 
   mkdir -p "$BASE_DIR/${name}_tmp"
@@ -31,16 +24,16 @@ for ((i=0; i<count; i++)); do
   IFS='|' read -ra types <<< "$type"
   IFS='|' read -ra extract_types <<< "$extract"
   IFS='|' read -ra keep_types <<< "$keep_pkg"
-  IFS='|' read -ra renames <<< "$rename"
+  IFS='|' read -ra folder_renames <<< "$folder_rename"
 
   for idx in "${!keywords[@]}"; do
     kw="${keywords[$idx]}"
-    # 获取对应的 rename 值，如果不存在则使用 keyword
-    rename_val="${renames[$idx]}"
-    if [[ "$rename_val" == "false" || -z "$rename_val" ]]; then
+    # 获取对应的 folder_rename 值，如果不存在则使用 keyword
+    folder_rename_val="${folder_renames[$idx]}"
+    if [[ "$folder_rename_val" == "false" || -z "$folder_rename_val" ]]; then
       folder_name="$kw"
     else
-      folder_name="$rename_val"
+      folder_name="$folder_rename_val"
     fi
 
     for ft in "${types[@]}"; do
