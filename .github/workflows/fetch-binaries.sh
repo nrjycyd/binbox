@@ -75,8 +75,8 @@ for ((i=0; i<count; i++)); do
         folder_name=$(remove_archive_suffix "$origin_basename")
         folder_name=$(remove_name_prefix "$folder_name" "$name")
       else
-        # 不包含压缩包后缀的情况：仅移除后缀
-        folder_name=$(remove_archive_suffix "$origin_basename")
+        # 不包含压缩包后缀的情况：保持keyword作为文件夹名
+        folder_name="$kw"
       fi
       
       # 新的三层目录结构：target_base/name/folder_name/
