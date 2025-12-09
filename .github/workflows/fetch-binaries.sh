@@ -9,17 +9,25 @@ BASE_DIR="/tmp/update_binaries"
 count=$(yq '.binaries | length' "$CONFIG_FILE")
 echo "📦 读取到 $count 个二进制任务"
 
-# 函数：移除压缩包后缀
-remove_archive_suffix() {
+# 函数：移除压缩包后缀和前缀程序名，提取关键部分
+extract_folder_name() {
   local filename=$1
-  # 移除 .tar.gz、.tar.bz2、.tar.xz 等
+  local prefix=$2
+  
+  # 首先移除压缩包后缀
   filename=${filename%.tar.gz}
   filename=${filename%.tar.bz2}
   filename=${filename%.tar.xz}
-  # 移除 .zip、.deb、.ipk 等
   filename=${filename%.zip}
   filename=${filename%.deb}
   filename=${filename%.ipk}
+  
+  # 移除前缀程序名（如果filename以prefix开头）
+  if [[ "$filename" == "$prefix"* ]]; then
+    # 移除前缀和其后的第一个 '-'
+    filename=${filename#${prefix}-}
+  fi
+  
   echo "$filename"
 }
 
@@ -52,8 +60,8 @@ for ((i=0; i<count; i++)); do
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
 
-      # 获取文件名（不含扩展名）
-      basename_no_ext=$(remove_archive_suffix "$(basename "$url")")
+      # 获取文件名（不含扩展名和程序名前缀）
+      basename_no_ext=$(extract_folder_name "$(basename "$url")" "$name")
       
       # 新的三层目录结构：target_base/name/keyword/
       target_dir="$target_base/$name/$basename_no_ext"
