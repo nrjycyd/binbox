@@ -51,9 +51,13 @@ for ((i=0; i<count; i++)); do
 
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
-      # 清理旧文件，避免重复运行时出现多余文件
-      rm -rf "$target_dir"
-      mkdir -p "$target_dir"
+      # 清理旧文件，避免重复运行时出现多余文件（仅在首次创建时）
+      if [[ ! -d "$target_dir" ]]; then
+        mkdir -p "$target_dir"
+      else
+        # 目录已存在，清理所有旧文件
+        rm -f "$target_dir"/*
+      fi
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
         echo "    📂 解压 $ft"
