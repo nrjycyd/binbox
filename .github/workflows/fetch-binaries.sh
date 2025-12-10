@@ -51,6 +51,8 @@ for ((i=0; i<count; i++)); do
 
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
+      # 清理旧文件，避免重复运行时出现多余文件
+      rm -rf "$target_dir"
       mkdir -p "$target_dir"
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
