@@ -51,16 +51,21 @@ for ((i=0; i<count; i++)); do
 
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
-      mkdir -p "$target_dir"
       
-      # 清理同类型的旧文件，避免重复运行时出现多余文件
-      if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
-        # 解压类型，清理解压后的可执行文件
-        find "$target_dir" -type f ! -name "*.$ft" -delete 2>/dev/null || true
+      # 首次创建该目录时清理（避免重复运行产生多余文件）
+      if [[ ! -d "$target_dir" ]]; then
+        mkdir -p "$target_dir"
       else
-        # 非解压类型，清理同后缀的旧文件
-        rm -f "$target_dir"/*".$ft" 2>/dev/null || true
+        # 目录已存在，仅清理对应类型的旧文件
+        if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
+          # 解压类型：清理解压后的临时文件（非压缩包）
+          find "$target_dir" -type f -not -name "*.$ft" -not -name "*.deb" -not -name "*.ipk" -delete 2>/dev/null || true
+        else
+          # 非解压类型：清理同后缀的旧文件
+          rm -f "$target_dir"/*".$ft" 2>/dev/null || true
+        fi
       fi
+      mkdir -p "$target_dir"
 
       if [[ " ${extract_types[*]} " == *"$ft"* ]]; then
         echo "    📂 解压 $ft"
