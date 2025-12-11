@@ -24,6 +24,11 @@ for ((i=0; i<count; i++)); do
 
   echo "🟩 更新 $name..."
   release_json=$(curl -s "https://api.github.com/repos/${repo}/releases/latest")
+  
+  # 创建版本记录文件
+  version_file="$target_base/$name/${name}_version"
+  mkdir -p "$(dirname "$version_file")"
+  > "$version_file"  # 清空版本文件
 
   IFS='|' read -ra keywords <<< "$keyword"
   IFS='|' read -ra types <<< "$type"
@@ -48,6 +53,9 @@ for ((i=0; i<count; i++)); do
       pkgfile="$BASE_DIR/${name}_tmp/$(basename "$url")"
       echo "    ⬇️ 下载: $url"
       curl -L -o "$pkgfile" "$url"
+      
+      # 提取版本信息（从download后的路径）
+      version_info=$(echo "$url" | sed 's|.*/download/||')
 
       # 新的三层目录结构：target_base/name/folder_name/
       target_dir="$target_base/$name/$folder_name"
@@ -130,6 +138,9 @@ for ((i=0; i<count; i++)); do
         target_file="$target_dir/$name.$ft"
         mv -f "$pkgfile" "$target_file"
       fi
+      
+      # 记录版本信息到版本文件
+      echo "$target_dir/$exec：$version_info" >> "$version_file"
 
     done
   done
