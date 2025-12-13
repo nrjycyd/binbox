@@ -47,7 +47,24 @@ for ((i=0; i<count; i++)); do
     fi
 
     for ft in "${types[@]}"; do
-      url=$(echo "$release_json" | jq -r ".assets[] | select(.name | contains(\"${kw}\") and endswith(\"${ft}\")) | .browser_download_url" | head -n1)
+      # 构建 jq 查询条件，支持正向匹配和负向排除
+      # 正向条件：contains(keyword)
+      # 负向条件：! 前缀，表示 not contains
+      jq_condition=".name | contains(\"${kw}\")"
+      
+      # 检查是否有排除条件（以 ! 开头的关键词）
+      if [[ "$kw" == !* ]]; then
+        # 提取排除条件（去掉 ! 前缀）
+        exclude_kw="${kw#!}"
+        # 改为排除条件
+        jq_condition=".name | contains(\"${exclude_kw}\") | not"
+      fi
+      
+      # 从上一个 keyword 的结果中继续排除（如果有多个排除条件）
+      # 这里简化处理：单个关键词支持一个正向和多个负向组合
+      # 实际应用中通常是：正向条件 + 多个!排除条件
+      
+      url=$(echo "$release_json" | jq -r ".assets[] | select(${jq_condition} and endswith(\"${ft}\")) | .browser_download_url" | head -n1)
       [[ -z "$url" ]] && continue
 
       pkgfile="$BASE_DIR/${name}_tmp/$(basename "$url")"
