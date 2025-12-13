@@ -29,10 +29,9 @@ for ((i=0; i<count; i++)); do
   version_file="$target_base/$name/${name}_version"
   mkdir -p "$(dirname "$version_file")"
   {
-    echo "${name}_version"
-    echo ""
+    echo "==== Repo ===="
     echo "https://github.com/${repo}"
-    echo ""
+    echo "==== version ===="
   } > "$version_file"  # 写入文件头
 
   IFS='|' read -ra keywords <<< "$keyword"
