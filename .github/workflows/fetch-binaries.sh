@@ -28,7 +28,12 @@ for ((i=0; i<count; i++)); do
   # 创建版本记录文件
   version_file="$target_base/$name/${name}_version"
   mkdir -p "$(dirname "$version_file")"
-  > "$version_file"  # 清空版本文件
+  {
+    echo "${name}_version"
+    echo ""
+    echo "https://github.com/${repo}"
+    echo ""
+  } > "$version_file"  # 写入文件头
 
   IFS='|' read -ra keywords <<< "$keyword"
   IFS='|' read -ra types <<< "$type"
