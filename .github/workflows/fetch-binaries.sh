@@ -74,7 +74,7 @@ for ((i=0; i<count; i++)); do
         fi
       done
       
-      url=$(echo "$release_json" | jq -r ".assets[] | select($jq_condition and endswith(\"${ft}\")) | .browser_download_url" | head -n1)
+      url=$(echo "$release_json" | jq -r ".assets[] | select($jq_condition and (.name | endswith(\"${ft}\"))) | .browser_download_url" | head -n1)
       [[ -z "$url" ]] && continue
 
       pkgfile="$BASE_DIR/${name}_tmp/$(basename "$url")"
