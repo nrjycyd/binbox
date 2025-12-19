@@ -8,7 +8,7 @@
 
 # ------------ 配置区域（可修改）------------
 FILE_DIR="/etc/smartdns/domain-set"
-REPO_URL="https://raw.githubusercontent.com/nrjycyd/smartdns-domain-lists/main/domain-set"
+REPO_URL="https://gh.070112.xyz/https://raw.githubusercontent.com/nrjycyd/smartdns-domain-lists/main/domain-set"
 
 # 临时文件路径
 TMP_DIRECT="/tmp/direct-list.tmp"
