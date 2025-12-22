@@ -91,3 +91,7 @@ make package/luci-app-momo/compile
 - kmod-nft-tproxy
 - kmod-tun
 - sing-box (1.12)
+
+## 注意事项
+
+1. 如果和第三方 DNS 服务器搭配使用，需要取消 Momo 的 DNS 劫持功能，Momo - 代理配置 - IPv4 DNS 劫持和 IPv6 DNS 劫持，取消勾选；
