@@ -1,0 +1,218 @@
+{ 
+  "log": {
+    "disabled": false,
+    "level": "info",
+    "timestamp": true
+  },
+
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "/etc/momo/run/cache.db",
+      "store_fakeip": true
+    },
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "/etc/momo/run/ui",
+      "external_ui_download_url": "https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip",
+      "external_ui_download_detour": "Direct"
+    }
+  },
+  
+  "dns": {
+    "servers": [
+      {"type": "https", "tag": "foreign-dns", "server": "dns.google", "server_port": 443, "path": "/dns-query", "domain_resolver": "ali-dns", "domain_strategy": "ipv4_only", "detour": "Proxy"},
+      {"type": "https", "tag": "local-dns", "server": "1.0.0.1", "server_port": 443, "path": "/dns-query", "domain_resolver": "ali-dns", "domain_strategy": "prefer_ipv4", "detour": "Proxy"},
+      {"type": "udp", "tag": "ali-dns", "server": "223.5.5.5", "server_port": 53, "domain_strategy": "prefer_ipv4"},
+      {"type": "fakeip", "tag": "fakeip-dns", "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18"}
+    ],
+    "rules": [
+      {"query_type": ["A","AAAA"], "invert": true, "action": "reject"},
+      {"inbound": "dns-in", "server": "fakeip-dns", "rewrite_ttl": 1}
+    ],
+    "final": "foreign-dns",
+    "strategy": "prefer_ipv4",
+    "independent_cache": true
+  },
+
+  "inbounds": [
+    {
+      "tag": "dns-in",
+      "type": "direct",
+      "listen": "::",
+      "listen_port": 1053
+    },
+    {
+      "tag": "http-in",
+      "type": "http",
+      "listen": "::",
+      "listen_port": 8080
+    },
+    {
+      "tag": "socks-in",
+      "type": "socks",
+      "listen": "::",
+      "listen_port": 1080
+    },
+    {
+      "tag": "redirect-in",
+      "type": "redirect",
+      "listen": "::",
+      "listen_port": 7890
+    },
+    {
+      "tag": "tproxy-in",
+      "type": "tproxy",
+      "listen": "::",
+      "listen_port": 7891
+    },
+    {
+      "tag": "tun-in",
+      "type": "tun",
+      "interface_name": "momo",
+      "address": [
+        "172.19.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "auto_route": false,
+      "auto_redirect": false
+    }
+  ],
+
+  "outbounds": [
+    {"type": "selector", "tag": "Proxy", "outbounds": ["hysteria-out1","hysteria-out2"], "default": "hysteria-out1"},
+    {
+      "type": "hysteria2",
+      "tag": "hysteria-out1",
+      "server": "127.0.0.1",
+      "server_ports": [
+        "2080:3000"
+      ],
+      "password": "aaaaaaaaaaaaaaaaaa",
+      "up_mbps": 50,
+      "down_mbps": 100,
+      "obfs": {
+        "type": "salamander",
+        "password": "aaaaaaaaaaaaaaaaaaaa"
+      },
+      "tls": {
+        "enabled": true,
+        "disable_sni": true,
+        "server_name": "www.abc.com",
+        "insecure": true,
+        "alpn": [
+          "h3"
+        ]
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hysteria-out2",
+      "server": "127.0.0.1",
+      "server_ports": [
+        "2080:3000"
+      ],
+      "password": "aaaaaaaaaaaaaaaaaa",
+      "up_mbps": 50,
+      "down_mbps": 100,
+      "obfs": {
+        "type": "salamander",
+        "password": "aaaaaaaaaaaaaaaaaaaa"
+      },
+      "tls": {
+        "enabled": true,
+        "disable_sni": true,
+        "server_name": "www.abc.com",
+        "insecure": true,
+        "alpn": [
+          "h3"
+        ]
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "Direct"
+    }
+  ],
+
+  "route": {
+    "rules": [
+      {"inbound": "dns-in", "action": "hijack-dns"},
+      {"ip_cidr": ["1.1.1.1/32", "1.0.0.1/32", "8.8.8.8/32", "8.8.4.4/32", "2001:4860:4860::8888/128", "2001:4860:4860::8844/128", "2606:4700:4700::1111/128", "2606:4700:4700::1001/128"], "outbound": "Proxy"},
+      {"ip_cidr": ["223.5.5.5/32", "223.6.6.6/32"], "outbound": "Direct"},
+      {"type": "logical", "mode": "or", "rules": [{"port": 853}, {"network": "udp", "port": 443}, {"protocol": "stun"}], "action": "reject", "method": "drop"},
+      {"ip_is_private": true, "outbound": "Direct"},
+      {"domain_suffix": ["browserleaks.com"], "outbound": "Proxy"},
+      {"domain_suffix": ["googleapis.com", "googleapis.cn"], "outbound": "Proxy"},
+      {"domain_suffix": [".ta77.fun", ".pdsxm.xyz"], "outbound": "Direct"},
+      {"rule_set": "geosite-category-ads-all", "action": "reject"},
+      {"rule_set": "geosite-icloud@cn", "outbound": "Direct"},
+      {"rule_set": "geosite-apple@cn", "outbound": "Direct"},
+      {"rule_set": "category-scholar-cn", "outbound": "Direct"},
+      {"rule_set": "category-games-cn", "outbound": "Direct"},
+      {"rule_set": "geosite-steam@cn", "outbound": "Direct"},
+      {"rule_set": "geosite-cn", "outbound": "Direct"},
+      {"rule_set": "geoip-cn", "outbound": "Direct"},
+      {"rule_set": "geosite-geolocation-cn@cn", "outbound": "Direct"},
+      {"rule_set": "geosite-geolocation-cn", "outbound": "Direct"},
+      {"rule_set": "geosite-youtube", "outbound": "Proxy"},
+      {"rule_set": "geosite-google", "outbound": "Proxy"},
+      {"rule_set": "geoip-google", "outbound": "Proxy"},
+      {"rule_set": "geosite-openai", "outbound": "Proxy"},
+      {"rule_set": "geosite-telegram", "outbound": "Proxy"},
+      {"rule_set": "geoip-telegram", "outbound": "Proxy"},
+      {"rule_set": "geosite-github", "outbound": "Proxy"},
+      {"rule_set": "geosite-cloudflare", "outbound": "Proxy"},
+      {"rule_set": "geoip-cloudflare", "outbound": "Proxy"},
+      {"rule_set": "geosite-netflix", "outbound": "Proxy"},
+      {"rule_set": "geoip-netflix", "outbound": "Proxy"},
+      {"rule_set": "geosite-category-media", "outbound": "Proxy"},
+      {"rule_set": "geosite-spotify", "outbound": "Proxy"},
+      {"rule_set": "geosite-facebook", "outbound": "Proxy"},
+      {"rule_set": "geoip-facebook", "outbound": "Proxy"},
+      {"rule_set": "geosite-x", "outbound": "Proxy"},
+      {"rule_set": "geosite-tiktok", "outbound": "Proxy"},
+      {"rule_set": "geosite-instagram", "outbound": "Proxy"},
+      {"rule_set": "geosite-geolocation-!cn", "outbound": "Proxy"},
+      {"type": "logical", "mode": "and", "rules": [{"domain_suffix": [".cn"]}, {"rule_set": "geosite-cn", "invert": true}], "outbound": "Proxy"},
+      {"rule_set": "geoip-cn", "invert": true, "outbound": "Proxy"}
+    ],
+    "rule_set": [
+      {"type": "local", "tag": "geosite-google", "format": "binary", "path": "/etc/momo/rules-dat/geosite/google.srs"},
+      {"type": "local", "tag": "geoip-google", "format": "binary", "path": "/etc/momo/rules-dat/geoip/google.srs"},
+      {"type": "local", "tag": "geosite-youtube", "format": "binary", "path": "/etc/momo/rules-dat/geosite/youtube.srs"},
+      {"type": "local", "tag": "geosite-openai", "format": "binary", "path": "/etc/momo/rules-dat/geosite/openai.srs"},
+      {"type": "local", "tag": "geosite-telegram", "format": "binary", "path": "/etc/momo/rules-dat/geosite/telegram.srs"},
+      {"type": "local", "tag": "geoip-telegram", "format": "binary", "path": "/etc/momo/rules-dat/geoip/telegram.srs"},
+      {"type": "local", "tag": "geosite-github", "format": "binary", "path": "/etc/momo/rules-dat/geosite/github.srs"},
+      {"type": "local", "tag": "geosite-jetbrains", "format": "binary", "path": "/etc/momo/rules-dat/geosite/jetbrains.srs"},
+      {"type": "local", "tag": "geosite-cloudflare", "format": "binary", "path": "/etc/momo/rules-dat/geosite/cloudflare.srs"},
+      {"type": "local", "tag": "geoip-cloudflare", "format": "binary", "path": "/etc/momo/rules-dat/geoip/cloudflare.srs"},
+      {"type": "local", "tag": "geosite-netflix", "format": "binary", "path": "/etc/momo/rules-dat/geosite/netflix.srs"},
+      {"type": "local", "tag": "geoip-netflix", "format": "binary", "path": "/etc/momo/rules-dat/geoip/netflix.srs"},
+      {"type": "local", "tag": "geosite-category-media", "format": "binary", "path": "/etc/momo/rules-dat/geosite/category-media.srs"},
+      {"type": "local", "tag": "geosite-spotify", "format": "binary", "path": "/etc/momo/rules-dat/geosite/spotify.srs"},
+      {"type": "local", "tag": "category-games-cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/category-games-cn.srs"},
+      {"type": "local", "tag": "geosite-steam@cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/steam@cn.srs"},
+      {"type": "local", "tag": "geosite-facebook", "format": "binary", "path": "/etc/momo/rules-dat/geosite/facebook.srs"},
+      {"type": "local", "tag": "geoip-facebook", "format": "binary", "path": "/etc/momo/rules-dat/geoip/facebook.srs"},
+      {"type": "local", "tag": "geosite-x", "format": "binary", "path": "/etc/momo/rules-dat/geosite/x.srs"},
+      {"type": "local", "tag": "geosite-tiktok", "format": "binary", "path": "/etc/momo/rules-dat/geosite/tiktok.srs"},
+      {"type": "local", "tag": "geosite-instagram", "format": "binary", "path": "/etc/momo/rules-dat/geosite/instagram.srs"},
+      {"type": "local", "tag": "geosite-speedtest", "format": "binary", "path": "/etc/momo/rules-dat/geosite/speedtest.srs"},
+      {"type": "local", "tag": "category-scholar-cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/category-scholar-cn.srs"},
+      {"type": "local", "tag": "geosite-cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/cn.srs"},
+      {"type": "local", "tag": "geoip-cn", "format": "binary", "path": "/etc/momo/rules-dat/geoip/cn.srs"},
+      {"type": "local", "tag": "geosite-icloud@cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/icloud@cn.srs"},
+      {"type": "local", "tag": "geosite-apple@cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/apple@cn.srs"},
+      {"type": "local", "tag": "geosite-geolocation-cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/geolocation-cn.srs"},
+      {"type": "local", "tag": "geosite-geolocation-cn@cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/geolocation-cn@cn.srs"},
+      {"type": "local", "tag": "geosite-geolocation-!cn", "format": "binary", "path": "/etc/momo/rules-dat/geosite/geolocation-!cn.srs"},
+      {"type": "local", "tag": "geosite-category-ads-all", "format": "binary", "path": "/etc/momo/rules-dat/geosite/category-ads-all.srs"}
+    ],
+    "default_domain_resolver": "local-dns",
+    "auto_detect_interface": true,
+    "final": "Proxy"
+  }
+
+}
