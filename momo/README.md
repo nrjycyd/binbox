@@ -95,7 +95,3 @@ make package/luci-app-momo/compile
 - kmod-nft-tproxy
 - kmod-tun
 - sing-box (1.12)
-
-## 贡献者
-
-[![贡献者](https://contrib.rocks/image?repo=nikkinikki-org/OpenWrt-momo)](https://github.com/nikkinikki-org/OpenWrt-momo/graphs/contributors)
