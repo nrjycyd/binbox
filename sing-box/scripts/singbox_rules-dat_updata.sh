@@ -10,9 +10,6 @@
 
 # 规则名称数组
 RULE_NAMES=(
-  "geosite-javdb"
-  "geosite-dmm"
-  "geosite-pornhub"
   "geosite-google"
   "geoip-google"
   "geosite-youtube"
