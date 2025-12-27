@@ -1,4 +1,6 @@
-预构建地址：https://firmware-selector.immortalwrt.org/
+下载地址：[https://downloads.immortalwrt.org/](https://downloads.immortalwrt.org/)
+
+预构建地址：[https://firmware-selector.immortalwrt.org/](https://firmware-selector.immortalwrt.org/)
 
 ```
 型号：Generic x86/64
