@@ -11,7 +11,7 @@
 预安装的软件包（添加）：
 
 ```
-luci-i18n-package-manager-zh-cn openssh-sftp-server snmpd bash
+luci-i18n-package-manager-zh-cn openssh-sftp-server snmpd bash open-vm-tools
 ```
 
 首次启动时运行的脚本（uci-defaults）:
