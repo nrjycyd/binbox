@@ -72,6 +72,7 @@ log_info "重启 SmartDNS 服务..."
 
 if systemctl restart smartdns; then
     log_ok "服务重启成功"
+    systemctl enable smartdns
     smartdns -v
 else
     log_error "服务重启失败"
