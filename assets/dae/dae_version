@@ -1,9 +1,3 @@
 ==== Repo ====
 https://github.com/daeuniverse/dae
 ==== version ====
-assets/dae/linux-x86_64/dae：v1.1.0/dae-linux-x86_64.deb
-assets/dae/linux-x86_64/dae：v1.1.0/dae-linux-x86_64.tar.xz
-assets/dae/linux-x86_64_v2/dae：v1.1.0/dae-linux-x86_64_v2_sse.deb
-assets/dae/linux-x86_64_v2/dae：v1.1.0/dae-linux-x86_64_v2_sse.tar.xz
-assets/dae/linux-x86_64_v3/dae：v1.1.0/dae-linux-x86_64_v3_avx2.deb
-assets/dae/linux-x86_64_v3/dae：v1.1.0/dae-linux-x86_64_v3_avx2.tar.xz
