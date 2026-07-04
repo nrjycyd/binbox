@@ -98,7 +98,14 @@ fi
 # 2. 从配置文件读取规则
 if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
     echo "配置文件: $CONFIG_FILE"
-    mapfile -t FILE_RULES < <(grep -A 1000 '"rule_set"' "$CONFIG_FILE" | \
+    
+    # 使用 jq 精准提取 route.rule_set 下所有对象的 tag
+    # 如果对应的节点不存在，jq 会优雅地返回空，不会报错
+    # mapfile -t FILE_RULES < <(jq -r '.route.rule_set[]?.tag // empty' "$CONFIG_FILE")
+
+    # 纯文本硬切：先找 route 模块，在其后 1000 行内找 rule_set
+    mapfile -t FILE_RULES < <(grep -A 1000 '"route"' "$CONFIG_FILE" | \
+                              grep -A 1000 '"rule_set"' | \
                               grep -B 1000 '^\s*]' | \
                               head -n -1 | \
                               grep '"tag"' | \
