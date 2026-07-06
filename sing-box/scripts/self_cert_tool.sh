@@ -76,8 +76,8 @@ generate_cert() {
     echo "证书链接: ${CERT_DIR}/cert.crt"
     echo "----------------------------------------"
     echo "v2rayN / Shadowrocket 适用指纹 (SHA-256):"
-    echo "标准格式 (带冒号): ${RAW_FINGERPRINT}"
-    echo "纯净格式 (无冒号): ${CLEAN_FINGERPRINT}"
+    echo "标准格式: ${RAW_FINGERPRINT}"
+    echo "纯净格式: ${CLEAN_FINGERPRINT}"
     echo "----------------------------------------"
 }
 
