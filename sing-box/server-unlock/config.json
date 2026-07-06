@@ -1,0 +1,46 @@
+{
+  "log": {"level": "info"},
+  "dns": {
+    "servers": [
+      {"type": "tls", "tag": "google", "server": "8.8.8.8"},
+      {"type": "tls", "tag": "cloudflare-v6", "server": "2606:4700:4700::1111"}
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "shadowsocks",
+      "listen": "::",
+      "listen_port": 8080,
+      "network": "tcp",
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "忽略",
+      "multiplex": {"enabled": true, "padding": true}
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct",
+      "inet4_bind_address": "IP4",
+      "inet6_bind_address": "IP6",
+      "domain_resolver": {"server": "google", "strategy": "prefer_ipv4"}
+    },
+    {
+      "type": "direct",
+      "tag": "direct-v6",
+      "inet6_bind_address": "IP6",
+      "domain_resolver": {"server": "cloudflare-v6", "strategy": "ipv6_only"}
+    }
+  ],
+  "route": {
+    "rule_set": [
+      {"type": "local", "tag": "geosite-netflix", "format": "binary", "path": "/etc/sing-box/rulesdat/geosite/netflix.srs"},
+      {"type": "local", "tag": "geoip-netflix", "format": "binary", "path": "/etc/sing-box/rulesdat/geoip/netflix.srs"}
+    ],
+    "rules": [
+      {"port": 53, "action": "hijack-dns"},
+      {"rule_set": ["geoip-netflix", "geosite-netflix"], "outbound": "direct-v6"}
+    ],
+    "final": "direct"
+  }
+}
