@@ -43,7 +43,7 @@ get_inputs() {
     DOMAIN="${USER_DOMAIN:-$DEFAULT_DOMAIN}"
 }
 
-# 3. 生成证书逻辑
+# 3. 生成证书逻辑并提取指纹
 generate_cert() {
     echo "正在创建目录: ${CERT_DIR}..."
     mkdir -p "${CERT_DIR}"
@@ -63,11 +63,21 @@ generate_cert() {
     rm -f "${CERT_DIR}/cert.crt"
     ln "${CERT_DIR}/cert.pem" "${CERT_DIR}/cert.crt"
 
+    # 计算 SHA-256 指纹
+    # 原始指纹格式通常为 SHA256 Fingerprint=AA:BB:CC...
+    RAW_FINGERPRINT=$(openssl x509 -noout -fingerprint -sha256 -in "${CERT_DIR}/cert.crt" | cut -d'=' -f2)
+    # 去掉冒号的纯文本格式
+    CLEAN_FINGERPRINT=$(echo "${RAW_FINGERPRINT}" | tr -d ':')
+
     echo "----------------------------------------"
     echo "证书生成成功！"
     echo "私钥文件: ${CERT_DIR}/private.key"
     echo "证书文件: ${CERT_DIR}/cert.pem"
     echo "证书链接: ${CERT_DIR}/cert.crt"
+    echo "----------------------------------------"
+    echo "v2rayN / Shadowrocket 适用指纹 (SHA-256):"
+    echo "标准格式 (带冒号): ${RAW_FINGERPRINT}"
+    echo "纯净格式 (无冒号): ${CLEAN_FINGERPRINT}"
     echo "----------------------------------------"
 }
 
