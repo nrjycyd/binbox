@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 默认配置
-DEFAULT_DIR="/root/hysteria"
+DEFAULT_DIR="/root/self_cert"
 DEFAULT_DOMAIN="bing.com"
 
 # 1. 检测并安装 OpenSSL
