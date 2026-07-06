@@ -22,8 +22,8 @@
         "alpn": [
           "h3"
         ],
-        "certificate_path": "/root/hysteria/cert.crt",
-        "key_path": "/root/hysteria/private.key"
+        "certificate_path": "/root/self_cert/cert.crt",
+        "key_path": "/root/self_cert/private.key"
       }
     }
   ],
