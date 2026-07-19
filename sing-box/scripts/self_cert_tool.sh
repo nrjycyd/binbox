@@ -13,6 +13,12 @@
 
 set -euo pipefail
 
+# 默认配置
+
+DEFAULT_DIR="/root/self_cert"
+DEFAULT_DOMAIN="www.bing.com"
+DEFAULT_SERVICE_USER="root"
+
 # 清理函数：中断时移除已生成的私钥
 
 cleanup() {
@@ -24,11 +30,6 @@ cleanup() {
     exit "$exit_code"
 }
 trap cleanup EXIT
-
-# 默认配置
-
-DEFAULT_DIR="/root/self_cert"
-DEFAULT_DOMAIN="www.bing.com"
 
 # ----------------------------------------------------------
 # 1. 检测并安装 OpenSSL
@@ -94,8 +95,8 @@ get_inputs() {
     DOMAIN="${DOMAINS[0]}"
 
     while true; do
-        read -r -p "服务运行用户（多个用逗号分隔，留空保持 root）: " SERVICE_USER
-        [ -z "$SERVICE_USER" ] && break
+        read -r -p "服务运行用户（多个用逗号分隔，留空保持 root）[默认: ${DEFAULT_SERVICE_USER}]: " USER_SERVICE
+        SERVICE_USER="${USER_SERVICE:-$DEFAULT_SERVICE_USER}"
 
         IFS=',' read -ra _raw_users <<< "$SERVICE_USER"
         declare -A _seen_user
@@ -118,27 +119,22 @@ get_inputs() {
 
         [ ${#missing[@]} -eq 0 ] && break
 
-        echo
         echo "以下用户不存在: ${missing[*]}"
-        while true; do
-            read -r -p "是否创建这些用户？(yes/no): " answer
-            case "$answer" in
-                yes|y)
-                    for u in "${missing[@]}"; do
-                        useradd -m -s /usr/sbin/nologin "$u"
-                        echo "已创建用户: $u"
-                    done
-                    break 2
-                    ;;
-                no|n)
-                    SERVICE_USERS=()
-                    break
-                    ;;
-                *)
-                    echo "请输入 yes 或 no"
-                    ;;
-            esac
-        done
+        read -r -p "是否创建这些用户？(yes/no): " answer
+        case "$answer" in
+            yes|y)
+                for u in "${missing[@]}"; do
+                    useradd -m -s /usr/sbin/nologin "$u"
+                    echo "已创建用户: $u"
+                done
+                break
+                ;;
+            no|n)
+                SERVICE_USERS=()
+                echo ""
+                continue
+                ;;
+        esac
     done
 
 }
@@ -325,3 +321,4 @@ check_openssl
 get_inputs
 
 generate_cert
+
