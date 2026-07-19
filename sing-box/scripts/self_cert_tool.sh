@@ -13,11 +13,9 @@
 
 set -euo pipefail
 
-# 默认配置
-
 DEFAULT_DIR="/root/self_cert"
 DEFAULT_DOMAIN="www.bing.com"
-DEFAULT_SERVICE_USER="root"
+DEFAULT_DAYS=3650
 
 # 清理函数：中断时移除已生成的私钥
 
@@ -77,67 +75,44 @@ get_inputs() {
 
     CERT_DIR="${USER_DIR:-$DEFAULT_DIR}"
 
-    read -r -p "请输入证书域名，多个用逗号或空格分隔 [默认: ${DEFAULT_DOMAIN}]: " USER_DOMAIN
-
-    DOMAIN="${USER_DOMAIN:-$DEFAULT_DOMAIN}"
-
-    IFS=' ,' read -ra _raw_domains <<< "$DOMAIN"
-    declare -A _seen
-    DOMAINS=()
-    for d in "${_raw_domains[@]}"; do
-        d="${d#"${d%%[! ]*}"}"
-        d="${d%"${d##*[! ]}"}"
-        [ -z "$d" ] && continue
-        [ -n "${_seen[$d]:-}" ] && continue
-        _seen[$d]=1
-        DOMAINS+=("$d")
-    done
-    DOMAIN="${DOMAINS[0]}"
-
     while true; do
-        read -r -p "服务运行用户（多个用逗号分隔，留空保持 root）[默认: ${DEFAULT_SERVICE_USER}]: " USER_SERVICE
-        SERVICE_USER="${USER_SERVICE:-$DEFAULT_SERVICE_USER}"
+        read -r -p "请输入证书域名，多个用逗号或空格分隔 [默认: ${DEFAULT_DOMAIN}]: " USER_DOMAIN
+        USER_DOMAIN="${USER_DOMAIN#"${USER_DOMAIN%%[! ]*}"}"
+        USER_DOMAIN="${USER_DOMAIN%"${USER_DOMAIN##*[! ]}"}"
+        DOMAIN="${USER_DOMAIN:-$DEFAULT_DOMAIN}"
 
-        IFS=',' read -ra _raw_users <<< "$SERVICE_USER"
-        declare -A _seen_user
-        SERVICE_USERS=()
-        for u in "${_raw_users[@]}"; do
-            u="${u#"${u%%[! ]*}"}"
-            u="${u%"${u##*[! ]}"}"
-            [ -z "$u" ] && continue
-            [ -n "${_seen_user[$u]:-}" ] && continue
-            _seen_user[$u]=1
-            SERVICE_USERS+=("$u")
+        if [ -z "$DOMAIN" ]; then
+            echo "域名不能为空"
+            continue
+        fi
+
+        IFS=' ,' read -ra _raw_domains <<< "$DOMAIN"
+        declare -A _seen
+        DOMAINS=()
+        for d in "${_raw_domains[@]}"; do
+            d="${d#"${d%%[! ]*}"}"
+            d="${d%"${d##*[! ]}"}"
+            [ -z "$d" ] && continue
+            [ -n "${_seen[$d]:-}" ] && continue
+            _seen[$d]=1
+            DOMAINS+=("$d")
         done
 
-        missing=()
-        for u in "${SERVICE_USERS[@]}"; do
-            if ! id "$u" &>/dev/null; then
-                missing+=("$u")
-            fi
-        done
+        if [ ${#DOMAINS[@]} -eq 0 ]; then
+            echo "域名不能为空"
+            continue
+        fi
 
-        [ ${#missing[@]} -eq 0 ] && break
-
-        echo "以下用户不存在: ${missing[*]}"
-        read -r -p "是否创建这些用户？(yes/no): " answer
-        case "$answer" in
-            yes|y)
-                for u in "${missing[@]}"; do
-                    useradd -m -s /usr/sbin/nologin "$u"
-                    echo "已创建用户: $u"
-                done
-                break
-                ;;
-            no|n)
-                SERVICE_USERS=()
-                echo ""
-                continue
-                ;;
-        esac
+        DOMAIN="${DOMAINS[0]}"
+        break
     done
+
+    read -r -p "请输入证书有效期（天）[默认: ${DEFAULT_DAYS}]: " USER_DAYS
+    CERT_DAYS="${USER_DAYS:-$DEFAULT_DAYS}"
 
 }
+
+
 
 # ----------------------------------------------------------
 # 3. 生成证书
@@ -154,7 +129,7 @@ generate_cert() {
     for d in "${DOMAINS[@]}"; do
         echo "  DNS:${d}"
     done
-    echo "有效期: 10年"
+    echo "有效期: ${CERT_DAYS}天（约$((CERT_DAYS/365))年）"
     echo "========================================"
     echo
 
@@ -165,6 +140,13 @@ generate_cert() {
     # ------------------------------------------------------
 
     echo "[1/4] 生成 EC P-256 私钥..."
+
+    for d in "${DOMAINS[@]}"; do
+        if [[ ! "$d" =~ ^[a-zA-Z0-9.-]+$ ]]; then
+            echo "非法域名: $d（仅允许字母、数字、. 和 -）"
+            exit 1
+        fi
+    done
 
     openssl ecparam \
         -genkey \
@@ -190,7 +172,7 @@ generate_cert() {
         -new \
         -x509 \
         -sha256 \
-        -days 3650 \
+        -days ${CERT_DAYS} \
         -key "${CERT_DIR}/private.key" \
         -out "${CERT_DIR}/cert.pem" \
         -subj "/CN=${DOMAIN}" \
@@ -200,8 +182,7 @@ generate_cert() {
 
     rm -f "${CERT_DIR}/cert.crt"
 
-    ln -s "$(basename "${CERT_DIR}/cert.pem")" \
-          "${CERT_DIR}/cert.crt"
+    cp "${CERT_DIR}/cert.pem" "${CERT_DIR}/cert.crt"
 
     # ------------------------------------------------------
     # 证书 SHA256 指纹
@@ -290,19 +271,7 @@ generate_cert() {
 
     echo
 
-    if [ ${#SERVICE_USERS[@]} -eq 1 ]; then
-        chown -R "${SERVICE_USERS[0]}:${SERVICE_USERS[0]}" "${CERT_DIR}"
-        echo "已变更所有者: ${SERVICE_USERS[0]}"
-    elif [ ${#SERVICE_USERS[@]} -gt 1 ]; then
-        groupadd -f ssl-cert
-        chgrp -R ssl-cert "${CERT_DIR}"
-        find "${CERT_DIR}" -type f -exec chmod 640 {} \;
-        find "${CERT_DIR}" -type d -exec chmod 750 {} \;
-        for u in "${SERVICE_USERS[@]}"; do
-            usermod -a -G ssl-cert "$u"
-            echo "已将用户 ${u} 加入 ssl-cert 组"
-        done
-    fi
+    chmod 644 "${CERT_DIR}"/*
 }
 
 # ----------------------------------------------------------
