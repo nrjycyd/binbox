@@ -1,6 +1,6 @@
 ==== Repo ====
 https://github.com/pymumu/smartdns
 ==== version ====
-assets/smartdns/x86_64-debian/smartdns：Release48.3/smartdns.1.2026.07.27-1404.x86_64-debian-all.deb
-assets/smartdns/x86_64-linux/smartdns：Release48.3/smartdns.1.2026.07.27-1404.x86_64-linux-all.tar.gz
-assets/smartdns/x86_64-openwrt/smartdns：Release48.3/smartdns.1.2026.07.27-1404.x86_64-openwrt-all.ipk
+assets/smartdns/x86_64-debian/smartdns：Release48.3/smartdns.1.2026.07.28-0446.x86_64-debian-all.deb
+assets/smartdns/x86_64-linux/smartdns：Release48.3/smartdns.1.2026.07.28-0446.x86_64-linux-all.tar.gz
+assets/smartdns/x86_64-openwrt/smartdns：Release48.3/smartdns.1.2026.07.28-0446.x86_64-openwrt-all.ipk
