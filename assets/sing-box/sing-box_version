@@ -1,7 +1,7 @@
 ==== Repo ====
 https://github.com/SagerNet/sing-box
 ==== version ====
-assets/sing-box/linux_amd64/sing-box：v1.13.15/sing-box_1.13.15_linux_amd64.deb
-assets/sing-box/linux-amd64/sing-box：v1.13.15/sing-box-1.13.15-linux-amd64.tar.gz
-assets/sing-box/linux-amd64-glibc/sing-box：v1.13.15/sing-box-1.13.15-linux-amd64-glibc.tar.gz
-assets/sing-box/linux-amd64-musl/sing-box：v1.13.15/sing-box-1.13.15-linux-amd64-musl.tar.gz
+assets/sing-box/linux_amd64/sing-box：v1.13.16/sing-box_1.13.16_linux_amd64.deb
+assets/sing-box/linux-amd64/sing-box：v1.13.16/sing-box-1.13.16-linux-amd64.tar.gz
+assets/sing-box/linux-amd64-glibc/sing-box：v1.13.16/sing-box-1.13.16-linux-amd64-glibc.tar.gz
+assets/sing-box/linux-amd64-musl/sing-box：v1.13.16/sing-box-1.13.16-linux-amd64-musl.tar.gz
