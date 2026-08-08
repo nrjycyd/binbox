@@ -1,0 +1,116 @@
+# DNS 服务器名称
+server-name smartdns
+
+# 启用仪表盘
+plugin smartdns_ui.so
+
+# 设置仪表盘参数
+smartdns-ui.ip http://[::]:6080
+smartdns-ui.user admin
+smartdns-ui.password nas123
+
+# 日志
+log-level notice
+log-file /var/log/smartdns/smartdns.log
+log-size 128k
+
+# 审计日志
+#audit-enable yes
+#audit-num 16
+#audit-size 16M
+#audit-file /var/log/smartdns/smartdns-audit.log
+
+# DNS 监听端口
+bind [::]:53
+bind-tcp [::]:53
+
+# 禁用查询请求
+#force-qtype-SOA 65
+
+# 启用测速 可选：speed-check-mode ping,tcp:443,tcp:80
+speed-check-mode none
+
+# 启用双栈优选 可选：dualstack-ip-selection yes
+dualstack-ip-selection no
+
+# 响应模式
+response-mode fastest-response
+
+# 启用缓存和持久化
+cache-size 32768
+cache-persist yes
+cache-file /var/cache/smartdns/smartdns.cache
+cache-checkpoint-time 43200
+prefetch-domain yes
+serve-expired yes
+serve-expired-ttl 180
+serve-expired-reply-ttl 30
+serve-expired-prefetch-time 3600 
+rr-ttl-min 600
+rr-ttl-max 86400
+rr-ttl-reply-max 3600
+
+# 默认 DNS
+server 218.4.4.4
+server 218.2.2.2
+server 223.5.5.5
+server 223.6.6.6
+server 119.29.29.29
+server 119.28.28.28
+server 180.184.1.1
+server 180.184.2.2
+server 114.114.114.114
+server 114.114.115.115
+server 180.76.76.76
+server [2400:3200:baba::1]
+server [2400:3200::1]
+server [240e:5a::6666]
+server [240e:5b::6666]
+
+# 后备 DNS
+# server-quic 223.5.5.5 -fallback
+
+# DIRECT 组规则
+group-begin DIRECT
+domain-set -name directlist -type list -file "/etc/smartdns/domain-set/direct_list.txt"
+domain-set -name apple_cn -type list -file "/etc/smartdns/domain-set/apple_cn.txt"
+domain-set -name google_cn -type list -file "/etc/smartdns/domain-set/google_cn.txt"
+domain-set -name whitelist -type list -file "/etc/smartdns/custom-rules/whitelist.txt"
+group-match -domain domain-set:directlist
+group-match -domain domain-set:apple_cn
+group-match -domain domain-set:google_cn
+group-match -domain domain-set:whitelist
+dualstack-ip-selection yes
+dualstack-ip-selection-threshold 10
+dualstack-ip-allow-force-AAAA yes
+speed-check-mode ping,tcp:443,tcp:80
+group-end
+
+# PROXY 组规则
+group-begin PROXY
+domain-set -name proxylist -type list -file "/etc/smartdns/domain-set/proxy_list.txt"
+domain-set -name greylist -type list -file "/etc/smartdns/custom-rules/greylist.txt"
+server udp://10.0.0.3:6666
+address #6
+group-end
+
+# REJECT 组规则
+group-begin REJECT
+domain-set -name rejectlist -type list -file "/etc/smartdns/domain-set/reject_list.txt"
+domain-set -name pcdnlist -type list -file "/etc/smartdns/domain-set/pcdn_list.txt"
+domain-set -name httpdnslist -type list -file "/etc/smartdns/domain-set/httpdns_list.txt"
+domain-set -name blocklist -type list -file "/etc/smartdns/custom-rules/blocklist.txt"
+group-match -domain domain-set:rejectlist
+group-match -domain domain-set:pcdnlist
+group-match -domain domain-set:httpdnslist
+group-match -domain domain-set:blocklist
+address #
+group-end
+
+# 直连设备绑定
+#ip-set -name direct_device -type list -file "/etc/smartdns/device_rules/direct_device.txt"
+#client-rules ip-set:direct_device -g DIRECT
+
+# 代理设备绑定
+ip-set -name proxy_device -type list -file "/etc/smartdns/device_rules/proxy_device.txt"
+client-rules ip-set:proxy_device -g PROXY
