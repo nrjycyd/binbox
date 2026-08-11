@@ -56,7 +56,20 @@ server udp://10.0.0.3:6666
 # 后备 DNS
 # server-quic 223.5.5.5 -fallback
 
-# DIRECT 组规则 edns-client-subnet 1.194.54.74/24
+# REJECT 组规则
+group-begin REJECT
+domain-set -name rejectlist -type list -file "/etc/smartdns/domain-set/reject_list.txt"
+domain-set -name pcdnlist -type list -file "/etc/smartdns/domain-set/pcdn_list.txt"
+domain-set -name httpdnslist -type list -file "/etc/smartdns/domain-set/httpdns_list.txt"
+domain-set -name blocklist -type list -file "/etc/smartdns/custom-rules/blocklist.txt"
+group-match -domain domain-set:rejectlist
+group-match -domain domain-set:pcdnlist
+group-match -domain domain-set:httpdnslist
+group-match -domain domain-set:blocklist
+address #
+group-end
+
+# DIRECT 组规则
 group-begin DIRECT
 domain-set -name directlist -type list -file "/etc/smartdns/domain-set/direct_list.txt"
 domain-set -name apple_cn -type list -file "/etc/smartdns/domain-set/apple_cn.txt"
@@ -94,19 +107,6 @@ domain-set -name greylist -type list -file "/etc/smartdns/custom-rules/greylist.
 group-match -domain domain-set:proxylist
 group-match -domain domain-set:greylist
 address #6
-group-end
-
-# REJECT 组规则
-group-begin REJECT
-domain-set -name rejectlist -type list -file "/etc/smartdns/domain-set/reject_list.txt"
-domain-set -name pcdnlist -type list -file "/etc/smartdns/domain-set/pcdn_list.txt"
-domain-set -name httpdnslist -type list -file "/etc/smartdns/domain-set/httpdns_list.txt"
-domain-set -name blocklist -type list -file "/etc/smartdns/custom-rules/blocklist.txt"
-group-match -domain domain-set:rejectlist
-group-match -domain domain-set:pcdnlist
-group-match -domain domain-set:httpdnslist
-group-match -domain domain-set:blocklist
-address #
 group-end
 
 # 直连设备绑定
