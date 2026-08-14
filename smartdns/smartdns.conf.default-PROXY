@@ -56,6 +56,9 @@ server udp://10.0.0.3:6666
 # 后备 DNS
 # server-quic 223.5.5.5 -fallback
 
+# 自定义高优先级域名规则
+# nameserver /googleapis.cn/PROXY
+
 # REJECT 组规则
 group-begin REJECT
 domain-set -name rejectlist -type list -file "/etc/smartdns/domain-set/reject_list.txt"
