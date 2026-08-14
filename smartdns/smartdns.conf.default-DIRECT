@@ -45,7 +45,7 @@ prefetch-domain yes
 serve-expired yes
 serve-expired-ttl 180
 serve-expired-reply-ttl 30
-serve-expired-prefetch-time 3600 
+serve-expired-prefetch-time 3600
 rr-ttl-min 600
 rr-ttl-max 86400
 rr-ttl-reply-max 3600
@@ -69,6 +69,9 @@ server [240e:5b::6666]
 
 # 后备 DNS
 # server-quic 223.5.5.5 -fallback
+
+# 自定义高优先级域名规则
+nameserver /googleapis.cn/PROXY
 
 # REJECT 组规则
 group-begin REJECT
@@ -103,6 +106,8 @@ group-end
 group-begin PROXY
 domain-set -name proxylist -type list -file "/etc/smartdns/domain-set/proxy_list.txt"
 domain-set -name greylist -type list -file "/etc/smartdns/custom-rules/greylist.txt"
+group-match -domain domain-set:proxylist
+group-match -domain domain-set:greylist
 server udp://10.0.0.3:6666
 address #6
 group-end
