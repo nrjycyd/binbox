@@ -45,7 +45,7 @@ prefetch-domain yes
 serve-expired yes
 serve-expired-ttl 180
 serve-expired-reply-ttl 30
-serve-expired-prefetch-time 3600 
+serve-expired-prefetch-time 3600
 rr-ttl-min 600
 rr-ttl-max 86400
 rr-ttl-reply-max 3600
@@ -112,10 +112,9 @@ group-match -domain domain-set:greylist
 address #6
 group-end
 
-# 直连设备绑定
+# 默认代理
+client-rules 10.0.0.0/24 -g PROXY
+
+# 指定走直连的客户端
 ip-set -name direct_device -type list -file "/etc/smartdns/device_rules/direct_device.txt"
 client-rules ip-set:direct_device -g DIRECT
-
-# 代理设备绑定
-#ip-set -name proxy_device -type list -file "/etc/smartdns/device_rules/proxy_device.txt"
-#client-rules ip-set:proxy_device -g PROXY
