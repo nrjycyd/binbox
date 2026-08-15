@@ -45,7 +45,7 @@ prefetch-domain yes
 serve-expired yes
 serve-expired-ttl 180
 serve-expired-reply-ttl 30
-serve-expired-prefetch-time 3600
+serve-expired-prefetch-time 3600 
 rr-ttl-min 600
 rr-ttl-max 86400
 rr-ttl-reply-max 3600
@@ -70,8 +70,8 @@ server [240e:5b::6666]
 # 后备 DNS
 # server-quic 223.5.5.5 -fallback
 
-# 自定义高优先级域名规则
-nameserver /googleapis.cn/PROXY
+# 自定义规则
+#nameserver /googleapis.cn/PROXY
 
 # REJECT 组规则
 group-begin REJECT
@@ -112,10 +112,9 @@ server udp://10.0.0.3:6666
 address #6
 group-end
 
-# 直连设备绑定
-#ip-set -name direct_device -type list -file "/etc/smartdns/device_rules/direct_device.txt"
-#client-rules ip-set:direct_device -g DIRECT
+# 默认直连
+client-rules 10.0.0.0/24 -g DIRECT
 
-# 代理设备绑定
+# 指定走代理的客户端
 ip-set -name proxy_device -type list -file "/etc/smartdns/device_rules/proxy_device.txt"
 client-rules ip-set:proxy_device -g PROXY
