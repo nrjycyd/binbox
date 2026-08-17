@@ -71,7 +71,7 @@ server [240e:5b::6666]
 # server-quic 223.5.5.5 -fallback
 
 # 自定义规则
-#nameserver /googleapis.cn/PROXY
+nameserver /googleapis.cn/PROXY
 
 # REJECT 组规则
 group-begin REJECT
