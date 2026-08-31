@@ -1,0 +1,182 @@
+# OxiDNS —— realip DNS 分流决策器（10.0.0.12）· 7 级瀑布流
+# 1 局域网 2 自定义直连/代理/拒绝 3 广告 4 国内域直连 5 geolocation-!cn 代理
+# 6 中国IP直连 7 代理兜底；非国内 AAAA 禁 v6
+
+log:
+  level: info
+
+api:
+  http:
+    listen: ":9199"
+    webui:
+      root: "./webui"
+
+plugins:
+  # ---------- rulesets ----------
+  # 私有/保留域名（geosite.dat private 分类,覆盖内网基础设施）
+  - tag: geosite_private
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "private" ] }
+
+  - tag: cusdom_direct
+    type: domain_set
+    args: { files: [ "/etc/oxidns/cusdom_direct.txt" ] }
+  - tag: cusdom_proxy
+    type: domain_set
+    args: { files: [ "/etc/oxidns/cusdom_proxy.txt" ] }
+  - tag: cusdom_reject
+    type: domain_set
+    args: { files: [ "/etc/oxidns/cusdom_reject.txt" ] }
+
+  - tag: geosite_ads
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "category-ads-all" ] }
+
+  - tag: geosite_apple_cn
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "apple-cn" ] }
+
+  - tag: geosite_google_cn
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "google-cn" ] }
+
+  - tag: geosite_noncn
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "geolocation-!cn" ] }
+
+  - tag: geosite_cn
+    type: geosite
+    args: { file: "/etc/oxidns/geosite.dat", selectors: [ "cn" ] }
+
+  - tag: geoip_cn
+    type: geoip
+    args: { file: "/etc/oxidns/geoip.dat", selectors: [ "cn" ] }
+
+  # ---------- upstreams ----------
+  - tag: forward_domestic
+    type: forward
+    args:
+      concurrent: 15
+      response_selection: fastest
+      upstreams:
+        - { tag: js218-4,  addr: "udp://218.4.4.4:53",        timeout: 5s }
+        - { tag: js218-2,  addr: "udp://218.2.2.2:53",        timeout: 5s }
+        - { tag: alidns-5, addr: "udp://223.5.5.5:53",        timeout: 5s }
+        - { tag: alidns-6, addr: "udp://223.6.6.6:53",        timeout: 5s }
+        - { tag: dnspod-29,addr: "udp://119.29.29.29:53",     timeout: 5s }
+        - { tag: dnspod-28,addr: "udp://119.28.28.28:53",     timeout: 5s }
+        - { tag: cmcc-1,   addr: "udp://180.184.1.1:53",      timeout: 5s }
+        - { tag: cmcc-2,   addr: "udp://180.184.2.2:53",      timeout: 5s }
+        - { tag: 114-114,  addr: "udp://114.114.114.114:53",  timeout: 5s }
+        - { tag: 114-115,  addr: "udp://114.114.115.115:53",  timeout: 5s }
+        - { tag: baidu-76, addr: "udp://180.76.76.76:53",     timeout: 5s }
+        - { tag: ali6-1,   addr: "udp://[2400:3200:baba::1]:53", timeout: 5s }
+        - { tag: ali6-2,   addr: "udp://[2400:3200::1]:53",     timeout: 5s }
+        - { tag: ct6-1,    addr: "udp://[240e:5a::6666]:53",   timeout: 5s }
+        - { tag: ct6-2,    addr: "udp://[240e:5b::6666]:53",   timeout: 5s }
+
+  - tag: forward_foreign
+    type: forward
+    args:
+      concurrent: 2
+      upstreams:
+        - { tag: google_doh, addr: "https://dns.google/dns-query", bootstrap: "223.5.5.5:53", socks5: "10.0.0.13:10800", timeout: 5s }
+        - { tag: google_dot, addr: "tls://dns.google:853",         bootstrap: "223.5.5.5:53", socks5: "10.0.0.13:10800", timeout: 5s }
+
+  - tag: cache_main
+    type: cache
+    args: { size: 8192, short_circuit: false, cache_negative: true }
+
+  - tag: ros_proxy_list
+    type: ros_address_list
+    args:
+      address: "10.0.0.1:8728"
+      username: "oxidns-api"
+      password: "******"
+      async: true
+      wait_timeout: 8s
+      queue_capacity: 16384
+      address_list4: "oxi-proxy4"
+      comment_prefix: "oxi"
+      min_ttl: 60
+      max_ttl: 3600
+      cleanup_on_shutdown: false
+
+  # ---------- branches ----------
+  - tag: seq_direct
+    type: sequence
+    args:
+      - matches: "!has_resp"
+        exec: "$forward_domestic"
+      - exec: "accept"
+
+  - tag: seq_proxy
+    type: sequence
+    args:
+      - matches: "qtype AAAA"
+        exec: "black_hole nodata short_circuit=true"
+      - matches: "qtype HTTPS"
+        exec: "black_hole nodata short_circuit=true"
+      - matches: "!has_resp"
+        exec: "$forward_foreign"
+      - exec: "$ros_proxy_list"
+
+  - tag: seq_block
+    type: sequence
+    args:
+      - exec: "black_hole nxdomain short_circuit=true"
+
+  - tag: seq_tail_resolve
+    type: sequence
+    args:
+      - matches: "qtype AAAA"
+        exec: "black_hole nodata short_circuit=true"
+      - matches: "qtype HTTPS"
+        exec: "black_hole nodata short_circuit=true"
+      - matches: "!has_resp"
+        exec: "$forward_foreign"
+
+  # ---------- main waterfall ----------
+  # 代理设备(10.0.0.101)：完整 realip 分流(国内直连+海外代理)
+  - tag: seq_full_split
+    type: sequence
+    args:
+      - exec: "$cache_main"
+      - matches: "qname $geosite_private"   # 0 私有/内部域名直连
+        exec: "$seq_direct"
+      - matches: "qname $cusdom_direct"   # 2a 自定义直连
+        exec: "$seq_direct"
+      - matches: "qname $cusdom_proxy"    # 2b 自定义代理
+        exec: "$seq_proxy"
+      - matches: "qname $cusdom_reject"     # 2c 自定义拒绝
+        exec: "$seq_block"
+      - matches: "qname $geosite_ads"     # 3 广告
+        exec: "$seq_block"
+      - matches: "qname $geosite_apple_cn"    # 4 apple 国内可直连
+        exec: "$seq_direct"
+      - matches: "qname $geosite_google_cn"   # 5 google 国内可直连
+        exec: "$seq_direct"
+      - matches: "qname $geosite_noncn"       # 6 geolocation-!cn 代理
+        exec: "$seq_proxy"
+      - matches: "qname $geosite_cn"          # 7 国内域直连
+        exec: "$seq_direct"
+      - exec: "$seq_tail_resolve"          # 兜底段：先解析(禁v6)
+      - matches: "resp_ip $geoip_cn"       # 解析后：国内IP直连
+        exec: "accept"
+      - exec: "$ros_proxy_list"            # 兜底代理喂CHR
+
+  # 入口：指定设备(10.0.0.101)走代理(realip)，其余默认直连
+  - tag: seq_main
+    type: sequence
+    args:
+      - matches: "client_ip &/etc/oxidns/devices_direct.txt"
+        exec: "$seq_direct"
+      - exec: "$seq_full_split"
+
+  # ---------- listeners ----------
+  - tag: udp_lan
+    type: udp_server
+    args: { entry: seq_main, listen: ":53" }
+  - tag: tcp_lan
+    type: tcp_server
+    args: { entry: seq_main, listen: ":53" }
