@@ -1,0 +1,95 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "dns": {
+    "servers": [
+      "https://1.1.1.1/dns-query"
+    ],
+    "queryStrategy": "UseIPv4"
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      { "type": "field", "network": "tcp,udp", "outboundTag": "proxy01" }
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "protocol": "socks",
+      "listen": "::",
+      "port": 10800,
+      "settings": {
+        "udp": true
+      }
+    },
+    {
+      "tag": "http-in",
+      "protocol": "http",
+      "listen": "::",
+      "port": 10801
+    },
+    {
+      "tag": "tproxy-in",
+      "protocol": "tunnel",
+      "port": 12345,
+      "settings": {
+        "allowedNetwork": "tcp,udp",
+        "followRedirect": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "routeOnly": true
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tproxy": "tproxy"
+        }
+      },
+      "listen": "0.0.0.0"
+    }
+  ],
+  "outbounds": [
+   {
+      "tag": "proxy01",
+      "protocol": "vless",
+      "settings": {
+        "address": "a-name.yourdomain.com", // 替换成你的真实域名
+        "port": 443,
+        "id": "uuiduuid-uuid-uuid-uuid-uuiduuiduuid", // 和服务器端的一致
+        "flow": "xtls-rprx-vision",
+        "encryption": "none",
+        "level": 0
+      },
+      "streamSettings": {
+        "method": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "a-name.yourdomain.com", // 替换成你的真实域名
+          "allowInsecure": false, // 禁止不安全证书
+          "fingerprint": "chrome" // 通过 uTLS 库 模拟 Chrome / Firefox / Safari 或随机生成的指纹
+        }
+      }
+    },
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "sockopt": {
+        "mark": 255
+      }
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole",
+      "sockopt": {
+        "mark": 255
+      }
+    }
+  ]
+}
