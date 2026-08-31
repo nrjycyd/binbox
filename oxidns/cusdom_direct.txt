@@ -1,0 +1,6 @@
+# 内网/局域网专用域名
+domain:lan
+domain:local
+domain:home.arpa
+
+# 自定义直连（步骤2a）
