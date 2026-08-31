@@ -4,9 +4,17 @@
   },
   "dns": {
     "servers": [
-      "https://1.1.1.1/dns-query"
-    ],
-    "queryStrategy": "UseIPv4"
+      {
+        "address": "1.1.1.1",
+        "domains": ["geosite:geolocation-!cn"]
+      },
+      {
+        "address": "223.5.5.5",
+        "domains": ["geosite:cn"],
+        "expectIPs": ["geoip:cn"]
+      },
+      "8.8.8.8"
+    ]
   },
   "routing": {
     "domainStrategy": "IPIfNonMatch",
