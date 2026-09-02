@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================================
-# rtp2httpd 通用自动更新脚本（参考 singbox_update_new.sh 格式）
+# rtp2httpd 通用自动更新脚本
 #
 # 对应「12.IPTV 组播播放方案」方式 A：
 #   GitHub Release 官方静态二进制（rtp2httpd-<版本>-x86_64）
