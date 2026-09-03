@@ -1,0 +1,455 @@
+{
+  // sing-box v1.14.0 手机端配置（SFA / SFI 通用）— 脱敏模板
+  // 分流参考 OxiDNS 瀑布流（DNS 与路由规则均自上而下、首条命中即停）：
+  //  1  局域网(geosite private) 直连
+  //  2a 自定义拒绝  2b 自定义代理  2c 自定义直连
+  //  3  广告拒绝
+  //  4  apple-cn 直连
+  //  5  google-cn 直连
+  //  6  geolocation-!cn 代理
+  //  7  国内域(cn) 直连
+  //  8  兜底 realip：解析后国内IP直连，否则代理
+  //  非国内路径(2b/6) 禁 AAAA 记录（HTTPS 已由顶部全局拦截，即禁 v6）
+  "$schema": "https://sing-box.sagernet.org/schema.json",
+
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+
+  "dns": {
+    "servers": [
+      // 引导 DNS：解析其他 DNS 服务器域名用（DoQ 直连阿里）
+      {
+        "type": "quic",
+        "tag": "ali-dns",
+        "server": "223.5.5.5",
+        "server_port": 853
+      },
+      // 本地 DNS：使用手机系统默认 DNS（iOS 下=当前网络 DHCP DNS；在家即网关 DNS）
+      {
+        "type": "local",
+        "tag": "local-dns"
+      },
+      // 国外 DNS（等价 OxiDNS forward_foreign，走代理）
+      {
+        "type": "https",
+        "tag": "remote-dns",
+        "server": "dns.google",
+        "server_port": 443,
+        "path": "/dns-query",
+        "domain_resolver": {
+          "server": "ali-dns",
+          "strategy": "ipv4_only"
+        },
+        "detour": "proxy"
+      }
+    ],
+    "rules": [
+      {
+        "query_type": ["SOA", "PTR", "HTTPS", "SVCB"],
+        "action": "predefined",
+        "rcode": "NOERROR"
+      },
+      {
+        "query_type": ["A", "AAAA"],
+        "invert": true,
+        "action": "reject"
+      },
+      // 1 局域网(private) 直连 → 本地 DNS
+      {
+        "rule_set": ["geosite-private"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      // 2a 自定义拒绝 → NXDOMAIN
+      {
+        "rule_set": ["cusdom-reject"],
+        "action": "predefined",
+        "rcode": "NXDOMAIN"
+      },
+      // 2b 自定义代理 → 禁 v6 记录，走代理 DNS
+      {
+        "query_type": ["AAAA"],
+        "rule_set": ["cusdom-proxy"],
+        "action": "predefined",
+        "rcode": "NOERROR"
+      },
+      {
+        "rule_set": ["cusdom-proxy"],
+        "action": "route",
+        "server": "remote-dns"
+      },
+      // 2c 自定义直连 → 本地 DNS
+      {
+        "rule_set": ["cusdom-direct"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      // 3 广告 → NXDOMAIN
+      {
+        "rule_set": ["geosite-category-ads-all"],
+        "action": "predefined",
+        "rcode": "NXDOMAIN"
+      },
+      // 4 apple 国内可直连 → 本地 DNS
+      {
+        "rule_set": ["geosite-apple-cn"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      // 5 google 国内可直连 → 本地 DNS
+      {
+        "rule_set": ["geosite-google-cn"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      // 6 非国内域名 → 禁 v6 记录，走代理 DNS
+      {
+        "query_type": ["AAAA"],
+        "rule_set": ["geosite-geolocation-!cn"],
+        "action": "predefined",
+        "rcode": "NOERROR"
+      },
+      {
+        "rule_set": ["geosite-geolocation-!cn"],
+        "action": "route",
+        "server": "remote-dns"
+      },
+      // 7 国内域 → 本地 DNS
+      {
+        "rule_set": ["geosite-cn"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      // 8 兜底 realip：先国外 DNS 解析，响应为国内 IP 则改走本地 DNS
+      {
+        "action": "evaluate",
+        "server": "remote-dns"
+      },
+      {
+        "match_response": true,
+        "rule_set": ["geoip-cn"],
+        "action": "route",
+        "server": "local-dns"
+      },
+      {
+        "action": "respond"
+      }
+    ],
+    "final": "remote-dns"
+  },
+
+  "http_clients": [
+    // 规则集下载用 HTTP client（1.14 起需显式声明，替代被弃用的隐式默认 client）
+    {
+      "tag": "rule-set-download",
+      "detour": "proxy"
+    }
+  ],
+
+  "inbounds": [
+    // TUN 入站：全局虚拟网卡接管流量（需 SFA/SFI 授权 VPN）
+    // dns_mode=hijack：拦截系统 DNS 进 DNS 模块；auto_route：自动路由全部流量
+    // strict_route：严格路由（防止绕过）；stack=mixed：TCP/UDP 均用 system 栈
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "tun0",
+      "address": ["172.18.0.1/30", "fdfe:dcba:9876::1/126"],
+      "mtu": 9000,
+      "dns_mode": "hijack",
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "mixed"
+    }
+  ],
+
+  "outbounds": [
+    // 节点选择器：路由规则引用 proxy（tag 小写以匹配规则；默认 <node-2>）
+    {
+      "tag": "proxy",
+      "type": "selector",
+      "outbounds": ["<node-1>", "<node-2>", "<node-3>"],
+      "default": "<node-2>"
+    },
+    // 手动选择
+    {
+      "type": "selector",
+      "tag": "select",
+      "outbounds": ["proxy", "direct"]
+    },
+    // 测速（仅查看延迟，不参与任何路由决策）
+    {
+      "type": "urltest",
+      "tag": "speed-proxy",
+      "outbounds": ["proxy"],
+      "url": "https://www.gstatic.com/generate_204"
+    },
+    {
+      "type": "urltest",
+      "tag": "speed-direct",
+      "outbounds": ["direct"],
+      "url": "https://www.baidu.com/generate_204"
+    },
+    // ==== 节点 1：<node-1>（hysteria2）====
+    {
+      "type": "hysteria2",
+      "tag": "<node-1>",
+      "server": "<node-1-ip>",
+      "server_ports": ["30000:50000"],
+      "password": "<password-1>",
+      "up_mbps": 50,
+      "down_mbps": 100,
+      "obfs": {
+        "type": "salamander",
+        "password": "<obfs-password-1>"
+      },
+      "tls": {
+        "enabled": true,
+        "disable_sni": false,
+        "server_name": "<sni-1>",
+        "insecure": false,
+        "alpn": ["h3"],
+        // 手机端改内联证书：把服务器 cert.crt 的完整内容（-----BEGIN/END CERTIFICATE----- 多行）
+        // 替换下面的占位符；若服务器不用自签证书可整体删除 certificate 块
+        "certificate": [
+          "<server-cert-1>"
+        ]
+      }
+    },
+    // ==== 节点 2：<node-2>（hysteria2）====
+    {
+      "type": "hysteria2",
+      "tag": "<node-2>",
+      "server": "<node-2-ip>",
+      "server_ports": ["30000:50000"],
+      "password": "<password-2>",
+      "up_mbps": 50,
+      "down_mbps": 100,
+      "obfs": {
+        "type": "salamander",
+        "password": "<obfs-password-2>"
+      },
+      "tls": {
+        "enabled": true,
+        "disable_sni": false,
+        "server_name": "<sni-1>",
+        "insecure": false,
+        "alpn": ["h3"],
+        // 手机端改内联证书：把服务器 cert.crt 的完整内容（-----BEGIN/END CERTIFICATE----- 多行）
+        // 替换下面的占位符；若服务器不用自签证书可整体删除 certificate 块
+        "certificate": [
+          "<server-cert-2>"
+        ]
+      }
+    },
+    // ==== 节点 3：<node-3>（vless + XTLS Vision）====
+    {
+      "type": "vless",
+      "tag": "<node-3>",
+      "server": "<node-3-ip>",
+      "server_port": 443,
+      "uuid": "<uuid>",
+      "flow": "xtls-rprx-vision",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "disable_sni": false,
+        "server_name": "<sni-2>",
+        "insecure": false,
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    // 直连出站：国内流量 / 局域网
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    // 阻断出站：广告 / 拒绝规则用
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ],
+
+  "route": {
+    "rule_set": [
+      { "type": "remote", "tag": "geosite-private", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/private.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geosite-apple-cn", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/apple-cn.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geosite-google-cn", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google-cn.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geosite-cn", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geosite-geolocation-!cn", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geosite-category-ads-all", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ads-all.srs",
+        "update_interval": "24h" },
+      { "type": "remote", "tag": "geoip-cn", "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
+        "update_interval": "24h" },
+      // 自定义内联域名集
+      // "domain": ["reject.example.com"]
+      // "domain_suffix": ["reject.example.com"]
+      // "domain_keyword": ["reject"]
+      // "domain_regex": ["^reject\\..+\\.com$"]
+      // "domain" / "domain_suffix" / "domain_keyword" / "domain_regex" 规则可同时使用，满足任意一条即匹配
+      // 自定义拒绝（内联）
+      {
+        "type": "inline",
+        "tag": "cusdom-reject",
+        "rules": [
+          {
+            "domain": ["<reject-domain>"],
+            "domain_suffix": [],
+            "domain_keyword": [],
+            "domain_regex": []
+          }
+        ]
+      },
+      // 自定义代理（内联）
+      {
+        "type": "inline",
+        "tag": "cusdom-proxy",
+        "rules": [
+          {
+            "domain": ["<proxy-domain>"],
+            "domain_suffix": [],
+            "domain_keyword": [],
+            "domain_regex": []
+          }
+        ]
+      },
+      // 自定义直连（内联）
+      {
+        "type": "inline",
+        "tag": "cusdom-direct",
+        "rules": [
+          {
+            "domain": ["<direct-domain>"],
+            "domain_suffix": ["<direct-domain-suffix-1>", "<direct-domain-suffix-2>"],
+            "domain_keyword": [],
+            "domain_regex": []
+          }
+        ]
+      }
+    ],
+    "rules": [
+      { "action": "sniff" },
+      { "protocol": "dns", "action": "hijack-dns" },
+      // 公共 DNS 走代理，防 DNS 泄漏
+      {
+        "ip_cidr": [
+          "1.1.1.1/32", "1.0.0.1/32", "8.8.8.8/32", "8.8.4.4/32",
+          "2001:4860:4860::8888/128", "2001:4860:4860::8844/128",
+          "2606:4700:4700::1111/128", "2606:4700:4700::1001/128"
+        ],
+        "action": "route",
+        "outbound": "proxy"
+      },
+      // 阿里 DNS 直连
+      {
+        "ip_cidr": ["223.5.5.5/32", "223.6.6.6/32"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 拒 DoT / UDP443(QUIC) / STUN
+      {
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          { "port": 853 },
+          { "network": "udp", "port": 443 },
+          { "protocol": "stun" }
+        ],
+        "action": "reject",
+        "method": "drop"
+      },
+      // 1 局域网(private) → 直连
+      {
+        "rule_set": ["geosite-private"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 2a 自定义拒绝 → 拦截
+      {
+        "rule_set": ["cusdom-reject"],
+        "action": "reject"
+      },
+      // 2b 自定义代理 → 走代理
+      {
+        "rule_set": ["cusdom-proxy"],
+        "action": "route",
+        "outbound": "select"
+      },
+      // 2c 自定义直连 → 直连
+      {
+        "rule_set": ["cusdom-direct"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 3 广告 → 拦截
+      {
+        "rule_set": ["geosite-category-ads-all"],
+        "action": "reject"
+      },
+      // 4 apple 国内可直连 → 直连
+      {
+        "rule_set": ["geosite-apple-cn"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 5 google 国内可直连 → 直连
+      {
+        "rule_set": ["geosite-google-cn"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 6 非国内域名 → 走代理
+      {
+        "rule_set": ["geosite-geolocation-!cn"],
+        "action": "route",
+        "outbound": "select"
+      },
+      // 7 国内域 → 直连
+      {
+        "rule_set": ["geosite-cn"],
+        "action": "route",
+        "outbound": "direct"
+      },
+      // 8 兜底 realip：域名解析为 IP 后按 geoip-cn 分流
+      { "action": "resolve" },
+      {
+        "rule_set": ["geoip-cn"],
+        "action": "route",
+        "outbound": "direct"
+      }
+    ],
+    "auto_detect_interface": true,
+    "default_domain_resolver": {
+      "server": "ali-dns",
+      "strategy": "ipv4_only"
+    },
+    "default_http_client": "rule-set-download",
+    "final": "select"
+  },
+
+  "experimental": {
+    // 缓存文件：持久化 DNS 缓存，重启不丢、加速解析
+    "cache_file": {
+      "enabled": true,
+      "store_dns": true
+    }
+  }
+}
