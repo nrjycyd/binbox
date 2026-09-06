@@ -32,6 +32,13 @@ for cmd in gh curl jq yq unzip tar gzip; do
   command -v "$cmd" >/dev/null || { echo "❌ 缺少命令: $cmd"; exit 1; }
 done
 
+# --force 强制重建（忽略版本差分）；也可通过环境变量 FORCE_REBUILD=true 触发
+FORCE_REBUILD=false
+if [[ "${1:-}" == "--force" || "${FORCE_REBUILD:-}" == "true" ]]; then
+  FORCE_REBUILD=true
+  echo "🔧 强制重建模式：忽略版本差分"
+fi
+
 # ---------- 加载旧 manifest 版本（用于差分） ----------
 declare -A old_tag
 if [[ -f "$MANIFEST" ]]; then
@@ -46,6 +53,12 @@ fi
 
 count=$(yq '.binaries | length' "$CONFIG_FILE")
 echo "📦 读取到 $count 个二进制任务"
+
+# 加载 pkgs 现有 asset 名（差分自愈：release 被删/不齐时触发重建）
+declare -A release_asset_set
+while IFS= read -r a; do
+  [[ -n "$a" ]] && release_asset_set["$a"]=1
+done < <(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)
 
 # ---------- 工具函数 ----------
 # 在 release_json 中按 match 模式挑选 asset（* 通配、! 排除、| 分隔）
@@ -211,6 +224,20 @@ prune_release() {
 }
 
 # ---------- 单个二进制处理 ----------
+# 检查 pkgs 中某程序当前版本 asset 是否齐备（差分自愈判断）
+release_assets_complete() {
+  local name="$1" version="$2"
+  local ac jj folder type asset_name
+  ac=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets | length" "$CONFIG_FILE")
+  for ((jj=0; jj<ac; jj++)); do
+    folder=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[$jj].folder" "$CONFIG_FILE")
+    type=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[$jj].type" "$CONFIG_FILE")
+    asset_name="$name-$folder-$version.$type"
+    [[ -n "${release_asset_set[$asset_name]:-}" ]] || return 1
+  done
+  return 0
+}
+
 process_binary() {
   local i="$1"
   local name repo verify assets_count
@@ -232,10 +259,14 @@ process_binary() {
   tag=$(echo "$release_json" | jq -r '.tag_name')
   version="${tag#v}"
 
-  # 差分：版本未变则跳过
-  if [[ "${old_tag[$name]:-}" == "$tag" ]]; then
-    echo "    ⏭️  跳过 $name：$version 未变"
-    return 0
+  # 差分：版本未变且 release asset 齐备才跳过；release 被删/不齐或 --force 则重建
+  if [[ "$FORCE_REBUILD" != true && "${old_tag[$name]:-}" == "$tag" ]]; then
+    if release_assets_complete "$name" "$version"; then
+      echo "    ⏭️  跳过 $name：$version 未变（release 完好）"
+      return 0
+    else
+      echo "    🔧 $name：$version 未变但 release 缺失/不完整，触发重建"
+    fi
   fi
 
   local stage_dir="$STAGE_ROOT/$name"
