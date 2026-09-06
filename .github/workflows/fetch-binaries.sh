@@ -336,9 +336,9 @@ process_binary() {
     mv -f "$pkgfile" "$stage_dir/$new_name"
 
     assets_json=$(jq --arg file "$new_name" --arg type "$type" --arg sha256 "$sha256" \
-      --arg size "$asset_size" --arg source "$asset_url" --arg version "$version" --arg tag "$tag" \
+      --arg size "$asset_size" --arg source "$asset_url" \
       --arg mirror "https://github.com/$RELEASE_REPO/releases/download/$RELEASE_TAG/$new_name" \
-      '. + [{file:$file, type:$type, sha256:$sha256, size:$size, source:$source, mirror:$mirror, version:$version, tag:$tag}]' \
+      '. + [{file:$file, type:$type, sha256:$sha256, size:$size, source:$source, mirror:$mirror}]' \
       <<<"$assets_json")
   done
 
