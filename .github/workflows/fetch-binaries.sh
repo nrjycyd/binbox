@@ -105,9 +105,11 @@ ensure_release() {
 }
 
 # 上传 staging 内所有文件到单一 release（同名覆盖）
+# 只取 $STAGE_ROOT 二级子目录（$STAGE_ROOT/<name>/<file>）内的真实 asset，
+# 排除根目录的 *_api_err 等 scratch 空文件与 *.minisig 临时文件
 upload_staged() {
   local -a staged=()
-  while IFS= read -r f; do staged+=("$f"); done < <(find "$STAGE_ROOT" -type f | sort)
+  while IFS= read -r f; do staged+=("$f"); done < <(find "$STAGE_ROOT" -mindepth 2 -type f ! -name '*.minisig' | sort)
   [[ ${#staged[@]} -gt 0 ]] || return 1
   gh release upload "$RELEASE_TAG" "${staged[@]}" --repo "$RELEASE_REPO" --clobber
 }
@@ -203,10 +205,11 @@ process_binary() {
 
   echo "🟩 $name ($repo) ..."
 
-  # 获取上游 latest release
-  local release_json tag version
-  release_json=$(gh api "repos/$repo/releases/latest" --jq '.' 2>"$STAGE_ROOT/${name}_api_err") || {
-    echo "    ❌ 获取 latest 失败: $(cat "$STAGE_ROOT/${name}_api_err")"
+  # 获取上游 latest release（stderr 捕获进变量，不落盘）
+  local release_json tag version api_err=""
+  release_json=$(gh api "repos/$repo/releases/latest" --jq '.' 2>&1) || {
+    api_err=$(echo "$release_json" | tail -n1)
+    echo "    ❌ 获取 latest 失败: $api_err"
     failures+=("$name: 获取 latest release 失败")
     return 1
   }
