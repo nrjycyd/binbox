@@ -353,7 +353,8 @@ done
 
 # ---------- 统一发布到双 release ----------
 if [[ ${#pending_names[@]} -gt 0 ]]; then
-  if ensure_release "$RELEASE_TAG" && ensure_release "$BACKUP_TAG" nolatest; then
+  # 先建备份、再建主 release：pkgs 创建/发布日期更新，保证 Release 列表排在 pkgs-prev 上方
+  if ensure_release "$BACKUP_TAG" nolatest && ensure_release "$RELEASE_TAG"; then
     # 1) 先复制各程序旧版本到 backup（此时 pkgs 仍为旧版）
     for bn in "${pending_names[@]}"; do
       copy_prev_to_backup "$bn"
