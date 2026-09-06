@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_at": "2026-09-06T09:28:56Z",
+  "updated_at": "2026-09-06T10:13:06Z",
   "status": "partial",
   "binaries": {
     "mosdns": {
@@ -10,24 +10,18 @@
       "repo": "yyysuo/mosdns",
       "assets": [
         {
-          "dir": "linux-amd64",
-          "file": "mosdns-linux-amd64.zip",
+          "file": "mosdns-linux-amd64-v3.zip",
           "type": "zip",
-          "exec": "mosdns",
-          "extract": "true",
-          "sha256": "1fdc7cb7a0362fe6a8974998864feeace090a374be5e59fe7c8a612ee57c07d4",
-          "size": "9775320",
-          "source": "https://github.com/yyysuo/mosdns/releases/download/v5-ph-srs-20260730-b93784b/mosdns-linux-amd64.zip",
-          "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/mosdns-linux-amd64.zip",
+          "sha256": "60a0badfbe9645e677f433200af31edc4a6e826121f7ec7d8b8d5eb6ff5337dc",
+          "size": "9763625",
+          "source": "https://github.com/yyysuo/mosdns/releases/download/v5-ph-srs-20260730-b93784b/mosdns-linux-amd64-v3.zip",
+          "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/mosdns-linux-amd64-v3.zip",
           "version": "5-ph-srs-20260730-b93784b",
           "tag": "v5-ph-srs-20260730-b93784b"
         },
         {
-          "dir": "linux-amd64-v3",
           "file": "mosdns-linux-amd64-v3.zip",
           "type": "zip",
-          "exec": "mosdns",
-          "extract": "true",
           "sha256": "60a0badfbe9645e677f433200af31edc4a6e826121f7ec7d8b8d5eb6ff5337dc",
           "size": "9763625",
           "source": "https://github.com/yyysuo/mosdns/releases/download/v5-ph-srs-20260730-b93784b/mosdns-linux-amd64-v3.zip",
@@ -44,11 +38,8 @@
       "repo": "pymumu/smartdns",
       "assets": [
         {
-          "dir": "x86_64-debian",
           "file": "smartdns-1.2026.08.05-0921.x86_64-debian-all.deb",
           "type": "deb",
-          "exec": "smartdns",
-          "extract": "false",
           "sha256": "4cc1b8f9db10110e1212d981cfee7eb89a3c80f5766760e3b5f7541c8da8b546",
           "size": "7911590",
           "source": "https://github.com/pymumu/smartdns/releases/download/Release48.4/smartdns.1.2026.08.05-0921.x86_64-debian-all.deb",
@@ -57,28 +48,12 @@
           "tag": "Release48.4"
         },
         {
-          "dir": "x86_64-linux",
           "file": "smartdns-1.2026.08.05-0921.x86_64-linux-all.tar.gz",
           "type": "tar.gz",
-          "exec": "smartdns",
-          "extract": "false",
           "sha256": "9d2164922dc8e822935e444d69a678636c5e7f8155e6ab4e81561d2d43cb9a0f",
           "size": "9478446",
           "source": "https://github.com/pymumu/smartdns/releases/download/Release48.4/smartdns.1.2026.08.05-0921.x86_64-linux-all.tar.gz",
           "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/smartdns-1.2026.08.05-0921.x86_64-linux-all.tar.gz",
-          "version": "Release48.4",
-          "tag": "Release48.4"
-        },
-        {
-          "dir": "x86_64-openwrt",
-          "file": "smartdns-1.2026.08.05-0921.x86_64-openwrt-all.ipk",
-          "type": "ipk",
-          "exec": "smartdns",
-          "extract": "false",
-          "sha256": "d82c17c7341c4f27b56bb9393be00d2678bda3fff4efd8aa17f599290e33de46",
-          "size": "9442168",
-          "source": "https://github.com/pymumu/smartdns/releases/download/Release48.4/smartdns.1.2026.08.05-0921.x86_64-openwrt-all.ipk",
-          "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/smartdns-1.2026.08.05-0921.x86_64-openwrt-all.ipk",
           "version": "Release48.4",
           "tag": "Release48.4"
         }
@@ -91,11 +66,8 @@
       "repo": "SagerNet/sing-box",
       "assets": [
         {
-          "dir": "linux_amd64",
           "file": "sing-box-1.14.0_linux_amd64.deb",
           "type": "deb",
-          "exec": "sing-box",
-          "extract": "false",
           "sha256": "84035ea7eb85570830af77801e8e949d3769dd23bbcacce08df3bfde1945f299",
           "size": "32258946",
           "source": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box_1.14.0_linux_amd64.deb",
@@ -104,11 +76,8 @@
           "tag": "v1.14.0"
         },
         {
-          "dir": "linux-amd64",
           "file": "sing-box-1.14.0-linux-amd64.tar.gz",
           "type": "tar.gz",
-          "exec": "sing-box",
-          "extract": "true",
           "sha256": "2375de6999f4f56ab46b4fc5ddf26a6aba1d3e61a0f4e7ddec2f4690457d5f63",
           "size": "31639897",
           "source": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-linux-amd64.tar.gz",
@@ -117,11 +86,8 @@
           "tag": "v1.14.0"
         },
         {
-          "dir": "linux-amd64-glibc",
           "file": "sing-box-1.14.0-linux-amd64-glibc.tar.gz",
           "type": "tar.gz",
-          "exec": "sing-box",
-          "extract": "true",
           "sha256": "e0a40801e1dc5d8bb467aa06493a2b5c45fe3d1e2d7ecb8d1bde8a439283d0d0",
           "size": "32452405",
           "source": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-linux-amd64-glibc.tar.gz",
@@ -130,11 +96,8 @@
           "tag": "v1.14.0"
         },
         {
-          "dir": "linux-amd64-musl",
           "file": "sing-box-1.14.0-linux-amd64-musl.tar.gz",
           "type": "tar.gz",
-          "exec": "sing-box",
-          "extract": "true",
           "sha256": "d2d6b4543d850269214ced70ffe41b13b1595baa1b6f9c016466abfba162c4d4",
           "size": "32481765",
           "source": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-linux-amd64-musl.tar.gz",
@@ -151,11 +114,8 @@
       "repo": "reF1nd/sing-box-releases",
       "assets": [
         {
-          "dir": "linux_amd64",
           "file": "sing-box-releases-SFL-1.14.0-reF1nd.1-amd64.deb",
           "type": "deb",
-          "exec": "sing-box",
-          "extract": "false",
           "sha256": "b584e468b2be0e3412b7cff3a4ba2bb6502190503103c22bc8c2c1c476419246",
           "size": "112365218",
           "source": "https://github.com/reF1nd/sing-box-releases/releases/download/v1.14.0-reF1nd.1/SFL-1.14.0-reF1nd.1-amd64.deb",
@@ -164,11 +124,8 @@
           "tag": "v1.14.0-reF1nd.1"
         },
         {
-          "dir": "linux-amd64-glibc",
           "file": "sing-box-releases-1.14.0-reF1nd.1-linux-amd64-glibc.tar.gz",
           "type": "tar.gz",
-          "exec": "sing-box",
-          "extract": "true",
           "sha256": "94a8329f4461e8965ea9321313e82c607c7b742c6a2fa08d83828bfecf13758a",
           "size": "33981601",
           "source": "https://github.com/reF1nd/sing-box-releases/releases/download/v1.14.0-reF1nd.1/sing-box-1.14.0-reF1nd.1-linux-amd64-glibc.tar.gz",
@@ -177,11 +134,8 @@
           "tag": "v1.14.0-reF1nd.1"
         },
         {
-          "dir": "linux-amd64-musl",
           "file": "sing-box-releases-1.14.0-reF1nd.1-linux-amd64-musl.tar.gz",
           "type": "tar.gz",
-          "exec": "sing-box",
-          "extract": "true",
           "sha256": "6831a8fe8faf0e030715773e4daee75a8a0261a4047bc6cc68e09b9e7f7e0136",
           "size": "34010793",
           "source": "https://github.com/reF1nd/sing-box-releases/releases/download/v1.14.0-reF1nd.1/sing-box-1.14.0-reF1nd.1-linux-amd64-musl.tar.gz",
@@ -198,11 +152,8 @@
       "repo": "MetaCubeX/mihomo",
       "assets": [
         {
-          "dir": "linux-amd64-v1",
           "file": "mihomo-linux-amd64-v1-v1.19.30.gz",
           "type": "gz",
-          "exec": "mihomo",
-          "extract": "true",
           "sha256": "cbe553d0319a414bd3a372c5976a252155b2c4882b66bce88a4d6bba9571a553",
           "size": "18899943",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v1-v1.19.30.gz",
@@ -211,11 +162,8 @@
           "tag": "v1.19.30"
         },
         {
-          "dir": "linux-amd64-v1",
           "file": "mihomo-linux-amd64-v1-v1.19.30.deb",
           "type": "deb",
-          "exec": "mihomo",
-          "extract": "false",
           "sha256": "5ffa2e31f3b54a12a0804162af413fdb1305fd0d0d1286e752096799f372a664",
           "size": "18779520",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v1-v1.19.30.deb",
@@ -224,11 +172,8 @@
           "tag": "v1.19.30"
         },
         {
-          "dir": "linux-amd64-v2",
           "file": "mihomo-linux-amd64-v2-v1.19.30.gz",
           "type": "gz",
-          "exec": "mihomo",
-          "extract": "true",
           "sha256": "87c345ed9905f607b702c17cc78f086b1db0a62b01e87cf9e245f089a5d2b8f7",
           "size": "18885933",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v2-v1.19.30.gz",
@@ -237,11 +182,8 @@
           "tag": "v1.19.30"
         },
         {
-          "dir": "linux-amd64-v2",
           "file": "mihomo-linux-amd64-v2-v1.19.30.deb",
           "type": "deb",
-          "exec": "mihomo",
-          "extract": "false",
           "sha256": "4d1ee942f5b5fe9ea587480127bfdbbf86ebc4e5a286d7e4425ceaee30057964",
           "size": "18766112",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v2-v1.19.30.deb",
@@ -250,11 +192,8 @@
           "tag": "v1.19.30"
         },
         {
-          "dir": "linux-amd64-v3",
           "file": "mihomo-linux-amd64-v3-v1.19.30.gz",
           "type": "gz",
-          "exec": "mihomo",
-          "extract": "true",
           "sha256": "2c3d87ea31a8b420285fa4c1dedd9fb2356fe289b609edac1c671c00738a1544",
           "size": "18868736",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v3-v1.19.30.gz",
@@ -263,11 +202,8 @@
           "tag": "v1.19.30"
         },
         {
-          "dir": "linux-amd64-v3",
           "file": "mihomo-linux-amd64-v3-v1.19.30.deb",
           "type": "deb",
-          "exec": "mihomo",
-          "extract": "false",
           "sha256": "dd1bffce4e89bb7814d865f80542d71f6746f3ff12818a3f4315d6f3ec380b88",
           "size": "18744608",
           "source": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v3-v1.19.30.deb",
@@ -284,11 +220,8 @@
       "repo": "AdguardTeam/AdGuardHome",
       "assets": [
         {
-          "dir": "linux_amd64",
           "file": "adguardhome-linux_amd64.tar.gz",
           "type": "tar.gz",
-          "exec": "adguardhome",
-          "extract": "false",
           "sha256": "c48f4a43000665484c5ec28177de11a004759b620dae8f77b2aabefc9ef3687f",
           "size": "12384479",
           "source": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_amd64.tar.gz",
@@ -305,11 +238,8 @@
       "repo": "daeuniverse/dae",
       "assets": [
         {
-          "dir": "linux-x86_64",
           "file": "dae-linux-x86_64.deb",
           "type": "deb",
-          "exec": "dae",
-          "extract": "false",
           "sha256": "055adbda152f2d28f9190caff515fbecec86f5fd94a94844c15a1dea45d9ec75",
           "size": "11382568",
           "source": "https://github.com/daeuniverse/dae/releases/download/v2.0.0/dae-linux-x86_64.deb",
@@ -318,11 +248,8 @@
           "tag": "v2.0.0"
         },
         {
-          "dir": "linux-x86_64",
           "file": "dae-linux-x86_64.tar.xz",
           "type": "tar.xz",
-          "exec": "dae",
-          "extract": "false",
           "sha256": "c8f25441fd68d0030cf692bca23606c2a12b55c8eb8fd66b068eed20201c2b2b",
           "size": "11371480",
           "source": "https://github.com/daeuniverse/dae/releases/download/v2.0.0/dae-linux-x86_64.tar.xz",
@@ -339,11 +266,8 @@
       "repo": "elseif/MikroTikPatch",
       "assets": [
         {
-          "dir": "chr-uefi-vmdk",
           "file": "routeros-chr-7.24.2.vmdk.zip",
           "type": "zip",
-          "exec": "routeros",
-          "extract": "false",
           "sha256": "6d8ae1f53542c78019d68256f3b05700d103603d1cfe71117dde830055eb0b03",
           "size": "26906634",
           "source": "https://github.com/elseif/MikroTikPatch/releases/download/7.24.2/chr-7.24.2.vmdk.zip",
@@ -352,11 +276,8 @@
           "tag": "7.24.2"
         },
         {
-          "dir": "chr-legacy-vmdk",
           "file": "routeros-chr-7.24.2-legacy-bios.vmdk.zip",
           "type": "zip",
-          "exec": "routeros",
-          "extract": "false",
           "sha256": "b54cc3f1cfc261b129db7c8cb46c98f8a1cb13b0879bd5d1ff369037557240d2",
           "size": "26935427",
           "source": "https://github.com/elseif/MikroTikPatch/releases/download/7.24.2/chr-7.24.2-legacy-bios.vmdk.zip",
@@ -373,11 +294,8 @@
       "repo": "XTLS/Xray-core",
       "assets": [
         {
-          "dir": "linux-64",
           "file": "xray-linux-64.zip",
           "type": "zip",
-          "exec": "xray",
-          "extract": "true",
           "sha256": "23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae",
           "size": "21136402",
           "source": "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip",
