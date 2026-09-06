@@ -73,7 +73,7 @@ jobs:
             ([.binaries | to_entries[] | "| [\(.key)](https://github.com/\(.value.repo)) | \(.value.version) | \(.value.assets | length) |"] | join("\n")) +
             "\n\n- 更新于: " + $updated + " (UTC+8)" +
             "\n- 状态: " + .status +
-            "\n- 最新 release: `pkgs` · 备份 release: `pkgs-prev`"
+            "\n- 最新 release: `pkgs` · 备份 release: `backup`"
           ' manifest.json)
 
           # 同 tag 复用：pkgs 已存在则刷新说明并追加 manifest，不存在则创建
