@@ -70,7 +70,7 @@ jobs:
           RELEASE_NOTES=$(jq -r --arg updated "$UPDATED_AT" '
             "## 📦 二进制镜像更新\n\n" +
             "| 程序 | 版本 | 文件数 |\n|---|---|---|\n" +
-            ([.binaries | to_entries[] | "| \(.key) | \(.value.version) | \(.value.assets | length) |"] | join("\n")) +
+            ([.binaries | to_entries[] | "| [\(.key)](https://github.com/\(.value.repo)) | \(.value.version) | \(.value.assets | length) |"] | join("\n")) +
             "\n\n- 更新于: " + $updated + " (UTC+8)" +
             "\n- 状态: " + .status +
             "\n- 最新 release: `pkgs` · 备份 release: `pkgs-prev`"
