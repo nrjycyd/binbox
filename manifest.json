@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "updated_at": "2026-09-06T04:31:14Z",
+  "updated_at": "2026-09-06T05:24:48Z",
   "status": "partial",
   "binaries": {
     "mosdns": {
       "version": "5-ph-srs-20260730-b93784b",
       "tag": "v5-ph-srs-20260730-b93784b",
-      "prev_tag": "",
+      "prev_tag": "v5-ph-srs-20260730-b93784b",
       "repo": "yyysuo/mosdns",
       "assets": [
         {
@@ -40,7 +40,7 @@
     "smartdns": {
       "version": "Release48.4",
       "tag": "Release48.4",
-      "prev_tag": "",
+      "prev_tag": "Release48.4",
       "repo": "pymumu/smartdns",
       "assets": [
         {
@@ -87,7 +87,7 @@
     "sing-box": {
       "version": "1.14.0",
       "tag": "v1.14.0",
-      "prev_tag": "",
+      "prev_tag": "v1.14.0",
       "repo": "SagerNet/sing-box",
       "assets": [
         {
@@ -147,7 +147,7 @@
     "sing-box-releases": {
       "version": "1.14.0-reF1nd.1",
       "tag": "v1.14.0-reF1nd.1",
-      "prev_tag": "",
+      "prev_tag": "v1.14.0-reF1nd.1",
       "repo": "reF1nd/sing-box-releases",
       "assets": [
         {
@@ -194,7 +194,7 @@
     "mihomo": {
       "version": "1.19.30",
       "tag": "v1.19.30",
-      "prev_tag": "",
+      "prev_tag": "v1.19.30",
       "repo": "MetaCubeX/mihomo",
       "assets": [
         {
@@ -280,7 +280,7 @@
     "adguardhome": {
       "version": "0.107.79",
       "tag": "v0.107.79",
-      "prev_tag": "",
+      "prev_tag": "v0.107.79",
       "repo": "AdguardTeam/AdGuardHome",
       "assets": [
         {
@@ -301,7 +301,7 @@
     "dae": {
       "version": "2.0.0",
       "tag": "v2.0.0",
-      "prev_tag": "",
+      "prev_tag": "v2.0.0",
       "repo": "daeuniverse/dae",
       "assets": [
         {
@@ -335,7 +335,7 @@
     "routeros": {
       "version": "7.24.2",
       "tag": "7.24.2",
-      "prev_tag": "",
+      "prev_tag": "7.24.2",
       "repo": "elseif/MikroTikPatch",
       "assets": [
         {
