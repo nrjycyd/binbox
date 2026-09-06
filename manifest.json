@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_at": "2026-09-06T06:14:55Z",
+  "updated_at": "2026-09-06T07:04:17Z",
   "status": "partial",
   "binaries": {
     "mosdns": {
@@ -363,6 +363,27 @@
           "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/routeros-chr-7.24.2-legacy-bios.vmdk.zip",
           "version": "7.24.2",
           "tag": "7.24.2"
+        }
+      ]
+    },
+    "xray": {
+      "version": "26.3.27",
+      "tag": "v26.3.27",
+      "prev_tag": "",
+      "repo": "XTLS/Xray-core",
+      "assets": [
+        {
+          "dir": "linux-64",
+          "file": "xray-linux-64.zip",
+          "type": "zip",
+          "exec": "xray",
+          "extract": "true",
+          "sha256": "23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae",
+          "size": "21136402",
+          "source": "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip",
+          "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/xray-linux-64.zip",
+          "version": "26.3.27",
+          "tag": "v26.3.27"
         }
       ]
     }
