@@ -45,6 +45,32 @@ jobs:
             git push origin HEAD:main
           fi
 
+      - name: 🚀 创建 GitHub Release
+        # 自定义 if 会替换默认 success() 检查，必须显式带 success()，否则构建失败后仍会执行
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 从 manifest.json 生成发布说明
+          RELEASE_NOTES=$(jq -r '
+            "## 📦 二进制镜像更新\n\n" +
+            "| 程序 | 版本 | 文件数 |\n|---|---|---|\n" +
+            ([.binaries | to_entries[] | "| \(.key) | \(.value.version) | \(.value.assets | length) |"] | join("\n")) +
+            "\n\n- 更新于: " + .updated_at +
+            "\n- 状态: " + .status +
+            "\n- 最新 release: `pkgs` · 备份 release: `pkgs-prev`"
+          ' manifest.json)
+
+          # 同 tag 复用：pkgs 已存在则刷新说明并追加 manifest，不存在则创建
+          if gh release view pkgs >/dev/null 2>&1; then
+              gh release edit pkgs --notes "$RELEASE_NOTES"
+              gh release upload pkgs manifest.json --clobber
+              echo "✅ Release 已存在，说明已更新"
+          else
+              gh release create pkgs manifest.json --title "pkgs" --notes "$RELEASE_NOTES"
+              echo "✅ Release 创建完成"
+          fi
+
       - name: Notify on failure
         if: hashFiles('.update_report.md') != ''
         env:
