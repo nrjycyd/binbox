@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "0 20 * * *"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "强制重建 release（忽略版本未变更，全量重新下载上传）"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -32,6 +38,8 @@ jobs:
       - name: Run update script
         id: update
         run: bash .github/workflows/fetch-binaries.sh
+        env:
+          FORCE_REBUILD: ${{ inputs.force }}
 
       - name: Commit manifest
         run: |
