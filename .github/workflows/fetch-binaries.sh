@@ -96,11 +96,17 @@ verify_asset() {
 }
 
 # 确保指定 release 存在
+# 确保指定 release 存在；nolatest 表示创建时不抢占 Latest
 ensure_release() {
-  local tag="$1"
+  local tag="$1" latest_flag="${2:-latest}"
   if ! gh release view "$tag" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
-    gh release create "$tag" --repo "$RELEASE_REPO" \
-      --title "$tag" --notes "二进制镜像（manifest.json 为索引）" || return 1
+    if [[ "$latest_flag" == "nolatest" ]]; then
+      gh release create "$tag" --repo "$RELEASE_REPO" \
+        --title "$tag" --notes "二进制镜像（manifest.json 为索引）" --latest=false || return 1
+    else
+      gh release create "$tag" --repo "$RELEASE_REPO" \
+        --title "$tag" --notes "二进制镜像（manifest.json 为索引）" || return 1
+    fi
   fi
 }
 
@@ -316,7 +322,7 @@ done
 
 # ---------- 统一发布到双 release ----------
 if [[ ${#pending_names[@]} -gt 0 ]]; then
-  if ensure_release "$RELEASE_TAG" && ensure_release "$BACKUP_TAG"; then
+  if ensure_release "$RELEASE_TAG" && ensure_release "$BACKUP_TAG" nolatest; then
     # 1) 先复制各程序旧版本到 backup（此时 pkgs 仍为旧版）
     for bn in "${pending_names[@]}"; do
       copy_prev_to_backup "$bn"
@@ -362,6 +368,16 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
   else
     failures+=("创建 release 失败")
   fi
+fi
+
+# ---------- 确保 pkgs 为 Latest（pkgs-prev 不占 Latest） ----------
+if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+  gh release edit "$RELEASE_TAG" --repo "$RELEASE_REPO" --latest || true
+  echo "✅ $RELEASE_TAG 已标记为 Latest"
+fi
+if gh release view "$BACKUP_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+  gh release edit "$BACKUP_TAG" --repo "$RELEASE_REPO" --latest=false || true
+  echo "ℹ️ $BACKUP_TAG 已取消 Latest 标记"
 fi
 
 # ---------- 汇总 ----------
