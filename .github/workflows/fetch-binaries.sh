@@ -435,6 +435,14 @@ if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
   echo "✅ $RELEASE_TAG 已标记为 Latest"
 fi
 
+# ---------- 排序体检：pkgs 的 created_at 应晚于 pkgs-prev，否则列表里 pkgs-prev 在上 ----------
+pkgs_created=$(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json createdAt --jq '.createdAt' 2>/dev/null || true)
+prev_created=$(gh release view "$BACKUP_TAG" --repo "$RELEASE_REPO" --json createdAt --jq '.createdAt' 2>/dev/null || true)
+if [[ -n "$pkgs_created" && -n "$prev_created" && "$pkgs_created" < "$prev_created" ]]; then
+  echo "⚠️  排序警告：$RELEASE_TAG ($pkgs_created) 早于 $BACKUP_TAG ($prev_created)，列表中 $BACKUP_TAG 会排在上面"
+  echo "    修复：删除两个 release 后重跑，脚本会按 pkgs-prev 先、pkgs 后的顺序重建"
+fi
+
 # ---------- 汇总 ----------
 if [[ ${#failures[@]} -gt 0 ]]; then
   {
