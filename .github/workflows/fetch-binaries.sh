@@ -373,8 +373,13 @@ done
 
 # ---------- 统一发布到双 release ----------
 if [[ ${#pending_names[@]} -gt 0 ]]; then
-  # 先建备份、再建主 release：pkgs 创建/发布日期更新，保证 Release 列表排在 pkgs-prev 上方
-  if ensure_release "$BACKUP_TAG" nolatest && ensure_release "$RELEASE_TAG"; then
+  # 先建备份、再建主 release：created_at 精度到秒，间隔 sleep 保证 pkgs 严格晚于 pkgs-prev，
+  # 否则同一秒创建会并列，GitHub 按创建顺序次级排序导致 pkgs-prev 排上面
+  ok=true
+  ensure_release "$BACKUP_TAG" nolatest || ok=false
+  sleep 2
+  [[ "$ok" == true ]] && ensure_release "$RELEASE_TAG" || ok=false
+  if [[ "$ok" == true ]]; then
     # 1) 每个待更新 binary：旧版复制到 backup，并记录复制集合
     for bn in "${pending_names[@]}"; do
       copy_prev_to_backup "$bn"
