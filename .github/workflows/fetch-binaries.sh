@@ -5,7 +5,7 @@
 #   - 版本未变且 release 完好则跳过（差分 + 自愈）
 #   - 下载 -> 大小校验 -> sha256 -> 可选签名校验
 #   - asset 命名：{name}-{上游原名}（大小写不敏感去重程序名前缀）
-#   - 上传到本仓库双 release：pkgs(最新) / pkgs-prev(次新备份)
+#   - 上传到本仓库双 release：pkgs(最新) / backup(次新备份)
 #   - 清理：按最长前缀归属，整组替换
 #   - 仅将 manifest.json 写回仓库（二进制不入库）
 # ============================================================
@@ -15,7 +15,9 @@ CONFIG_FILE=".github/workflows/binaries.conf"
 MANIFEST="manifest.json"
 REPORT=".update_report.md"
 RELEASE_TAG="pkgs"          # 最新二进制
-BACKUP_TAG="pkgs-prev"      # 次新备份（回滚用）
+# 备份 release 的 tag 名必须字典序小于 pkgs（如 backup），
+# 否则如 pkgs-prev 会排在 pkgs 上方（GitHub 按 tag 名字典序降序排 Release 列表）
+BACKUP_TAG="backup"         # 次新备份（回滚用）
 STAGE_ROOT="$(mktemp -d)"
 trap 'rm -rf "$STAGE_ROOT"' EXIT
 
@@ -373,12 +375,11 @@ done
 
 # ---------- 统一发布到双 release ----------
 if [[ ${#pending_names[@]} -gt 0 ]]; then
-  # 先建备份、再建主 release：created_at 精度到秒，间隔 sleep 保证 pkgs 严格晚于 pkgs-prev，
-  # 否则同一秒创建会并列，GitHub 按创建顺序次级排序导致 pkgs-prev 排上面
+  # 先建备份、再建主 release；GitHub 按 tag 名字典序降序排列表，
+  # backup < pkgs，故 pkgs 排在上方
   ok=true
   ensure_release "$BACKUP_TAG" nolatest || ok=false
-  sleep 2
-  [[ "$ok" == true ]] && ensure_release "$RELEASE_TAG" || ok=false
+  ensure_release "$RELEASE_TAG" || ok=false
   if [[ "$ok" == true ]]; then
     # 1) 每个待更新 binary：旧版复制到 backup，并记录复制集合
     for bn in "${pending_names[@]}"; do
@@ -430,7 +431,7 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
   fi
 fi
 
-# ---------- 确保 pkgs 为 Latest（先取消 pkgs-prev，再标记 pkgs） ----------
+# ---------- 确保 pkgs 为 Latest（先取消 backup，再标记 pkgs） ----------
 if gh release view "$BACKUP_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
   gh release edit "$BACKUP_TAG" --repo "$RELEASE_REPO" --latest=false || true
   echo "ℹ️ $BACKUP_TAG 已取消 Latest 标记"
@@ -438,14 +439,6 @@ fi
 if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
   gh release edit "$RELEASE_TAG" --repo "$RELEASE_REPO" --latest || true
   echo "✅ $RELEASE_TAG 已标记为 Latest"
-fi
-
-# ---------- 排序体检：pkgs 的 created_at 应晚于 pkgs-prev，否则列表里 pkgs-prev 在上 ----------
-pkgs_created=$(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json createdAt --jq '.createdAt' 2>/dev/null || true)
-prev_created=$(gh release view "$BACKUP_TAG" --repo "$RELEASE_REPO" --json createdAt --jq '.createdAt' 2>/dev/null || true)
-if [[ -n "$pkgs_created" && -n "$prev_created" && "$pkgs_created" < "$prev_created" ]]; then
-  echo "⚠️  排序警告：$RELEASE_TAG ($pkgs_created) 早于 $BACKUP_TAG ($prev_created)，列表中 $BACKUP_TAG 会排在上面"
-  echo "    修复：删除两个 release 后重跑，脚本会按 pkgs-prev 先、pkgs 后的顺序重建"
 fi
 
 # ---------- 汇总 ----------
