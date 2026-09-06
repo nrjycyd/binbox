@@ -399,7 +399,6 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
       release_assets "$BACKUP_TAG"
 
       # 上传后校验：pkgs 必须有 asset，否则视为失败（防"提示成功实则为空"）
-      local pkg_count
       pkg_count=$(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json assets --jq '.assets | length' 2>/dev/null || echo 0)
       if [[ "$pkg_count" == "0" ]]; then
         echo "❌ 上传后 $RELEASE_TAG 为空"
@@ -426,14 +425,14 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
   fi
 fi
 
-# ---------- 确保 pkgs 为 Latest（pkgs-prev 不占 Latest） ----------
-if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
-  gh release edit "$RELEASE_TAG" --repo "$RELEASE_REPO" --latest || true
-  echo "✅ $RELEASE_TAG 已标记为 Latest"
-fi
+# ---------- 确保 pkgs 为 Latest（先取消 pkgs-prev，再标记 pkgs） ----------
 if gh release view "$BACKUP_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
   gh release edit "$BACKUP_TAG" --repo "$RELEASE_REPO" --latest=false || true
   echo "ℹ️ $BACKUP_TAG 已取消 Latest 标记"
+fi
+if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+  gh release edit "$RELEASE_TAG" --repo "$RELEASE_REPO" --latest || true
+  echo "✅ $RELEASE_TAG 已标记为 Latest"
 fi
 
 # ---------- 汇总 ----------
