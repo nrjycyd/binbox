@@ -114,13 +114,13 @@ upload_staged() {
 
 # 将 pkgs 中某程序的旧版本 asset 复制到 backup release（须在更新 pkgs 之前执行）
 copy_prev_to_backup() {
-  local name="$1" dir="$STAGE_ROOT/prev_$name" patterns=() folder
+  local name="$1"
+  local dir="$STAGE_ROOT/prev_$name"
+  local patterns=() folder folders files
   mkdir -p "$dir"
-  local folders
   folders=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[].folder" "$CONFIG_FILE" | sort -u)
   for folder in $folders; do patterns+=(--pattern "$name-$folder-*"); done
   gh release download "$RELEASE_TAG" --repo "$RELEASE_REPO" "${patterns[@]}" --dir "$dir" >/dev/null 2>&1 || true
-  local files
   files=$(find "$dir" -type f)
   [[ -z "$files" ]] && { rm -rf "$dir"; return 0; }
   echo "    📦 复制旧版本到 $BACKUP_TAG"
