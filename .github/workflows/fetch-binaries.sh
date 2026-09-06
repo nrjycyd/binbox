@@ -1,11 +1,12 @@
 #!/bin/bash
 # ============================================================
-# 二进制更新脚本（manifest + 单一 Releases 方案）
+# 二进制更新脚本（manifest + 双 Releases 方案）
 #   - 查询上游 latest release
-#   - 版本未变则跳过（差分更新）
+#   - 版本未变且 release 完好则跳过（差分 + 自愈）
 #   - 下载 -> 大小校验 -> sha256 -> 可选签名校验
-#   - 全部校验通过后上传到本仓库的固定 release（tag=pkgs）
-#   - 同一 release 内按程序保留最近 N 版 asset，删除旧版
+#   - asset 命名：{name}-{上游原名}（大小写不敏感去重程序名前缀）
+#   - 上传到本仓库双 release：pkgs(最新) / pkgs-prev(次新备份)
+#   - 清理：按最长前缀归属，整组替换
 #   - 仅将 manifest.json 写回仓库（二进制不入库）
 # ============================================================
 set -uo pipefail
@@ -25,6 +26,7 @@ rm -f "$REPORT"
 failures=()
 declare -a pending_names=()
 declare -a pending_entries=()
+declare -A BACKUP_COPIED=()
 
 echo "🟦 开始二进制更新 $(date '+%F %T')"
 
@@ -59,6 +61,51 @@ declare -A release_asset_set
 while IFS= read -r a; do
   [[ -n "$a" ]] && release_asset_set["$a"]=1
 done < <(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)
+
+# 收集全部 binary 名（用于最长前缀归属判定）
+declare -a all_names=()
+while IFS= read -r n; do
+  [[ -n "$n" ]] && all_names+=("$n")
+done < <(yq -r '.binaries[].name' "$CONFIG_FILE" 2>/dev/null || true)
+
+# asset 命名规范：{name}-{上游原名}
+# 原名开头若与 name 的某个前缀（不区分大小写，逐段缩短）匹配，且其后是分隔符/结尾，
+# 则剥掉该前缀及一个分隔符，保留 rest；否则整个原名保留。
+# 例：sing-box-releases + sing-box-1.14.0-... -> sing-box-releases-1.14.0-...
+normalize_name() {
+  local name="$1" original="$2"
+  local lower_name="${name,,}" lower_orig="${original,,}"
+  local cand="$name" match="" after="" prev=""
+  while [[ -n "$cand" ]]; do
+    if [[ "$lower_orig" == "${cand,,}"* ]]; then
+      match="$cand"
+      break
+    fi
+    prev="$cand"
+    cand="${cand%-*}"
+    [[ "$cand" == "$prev" ]] && break
+  done
+  if [[ -n "$match" ]]; then
+    after="${original:${#match}}"
+    if [[ -z "$after" || "$after" == [-_.]* ]]; then
+      after="${after#[-_.]}"
+      echo "$name-$after"
+      return
+    fi
+  fi
+  echo "$name-$original"
+}
+
+# 最长 {name}- 前缀归属：返回 asset 归属的 binary 名（sing-box vs sing-box-releases 靠最长前缀区分）
+asset_owner() {
+  local asset="$1" best="" n
+  for n in "${all_names[@]}"; do
+    if [[ "$asset" == "$n-"* ]]; then
+      if [[ -z "$best" || ${#n} -gt ${#best} ]]; then best="$n"; fi
+    fi
+  done
+  echo "$best"
+}
 
 # ---------- 工具函数 ----------
 # 在 release_json 中按 match 模式挑选 asset（* 通配、! 排除、| 分隔）
@@ -108,7 +155,6 @@ verify_asset() {
   esac
 }
 
-# 确保指定 release 存在
 # 确保指定 release 存在；nolatest 表示创建时不抢占 Latest
 ensure_release() {
   local tag="$1" latest_flag="${2:-latest}"
@@ -143,98 +189,71 @@ release_assets() {
     --jq '"      \(.assets | length) 个: " + ([.assets[].name] | join(", "))' 2>/dev/null || echo "      (无法读取 $tag assets)"
 }
 
-# 将 pkgs 中某程序的旧版本 asset 复制到 backup release（须在更新 pkgs 之前执行）
+# 将 pkgs 中某程序的旧版本 asset 复制到 backup；复制的文件名集合写入全局 BACKUP_COPIED
 copy_prev_to_backup() {
   local name="$1"
   local dir="$STAGE_ROOT/prev_$name"
-  local patterns=() folder folders files
   mkdir -p "$dir"
-  folders=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[].folder" "$CONFIG_FILE" | sort -u)
-  for folder in $folders; do patterns+=(--pattern "$name-$folder-*"); done
-  gh release download "$RELEASE_TAG" --repo "$RELEASE_REPO" "${patterns[@]}" --dir "$dir" >/dev/null 2>&1 || true
+  gh release download "$RELEASE_TAG" --repo "$RELEASE_REPO" --pattern "$name-*" --dir "$dir" >/dev/null 2>&1 || true
+  # 仅保留归属该 binary 的文件（过滤前缀重叠，如 sing-box vs sing-box-releases）
+  local f base
+  for f in "$dir"/*; do
+    [[ -f "$f" ]] || continue
+    base=$(basename "$f")
+    [[ "$(asset_owner "$base")" == "$name" ]] || rm -f "$f"
+  done
+  local files
   files=$(find "$dir" -type f)
-  [[ -z "$files" ]] && { rm -rf "$dir"; return 0; }
+  if [[ -z "$files" ]]; then
+    BACKUP_COPIED["$name"]=""
+    rm -rf "$dir"
+    return 0
+  fi
   echo "    📦 复制旧版本到 $BACKUP_TAG"
   gh release upload "$BACKUP_TAG" $files --repo "$RELEASE_REPO" --clobber || \
     failures+=("$name: 备份 release 上传失败")
+  local copied=""
+  while IFS= read -r f; do
+    [[ -n "$f" ]] && copied="$copied $(basename "$f")"
+  done <<< "$files"
+  BACKUP_COPIED["$name"]="$copied"
   rm -rf "$dir"
 }
 
-# 将指定 release 中每个 folder 收敛到最近 1 个版本（latest 与 backup 各留 1 版）
-prune_release() {
-  local release_tag="$1"
-  local assets_list
-  assets_list=$(gh release view "$release_tag" --repo "$RELEASE_REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)
-  [[ -n "$assets_list" ]] || return 0
-
-  for ((i=0; i<count; i++)); do
-    local name ft_lines folders
-    name=$(yq -r ".binaries[$i].name" "$CONFIG_FILE")
-    ft_lines=$(yq -r ".binaries[$i].assets[] | [.folder, .type] | @tsv" "$CONFIG_FILE")
-    folders=$(echo "$ft_lines" | cut -f1 | sort -u)
-
-    # 遍历本程序所有 asset，归属到"最长匹配的 folder"
-    declare -A ver_map=()   # key = folder|asset, value = version
-    local folder_set=""
-    local asset f best rest tv
-    for asset in $assets_list; do
-      [[ "$asset" == "$name-"* ]] || continue
-      best=""; rest=""
-      for f in $folders; do
-        if [[ "$asset" == "$name-$f-"* ]]; then
-          if [[ -z "$best" || ${#f} -gt ${#best} ]]; then
-            best="$f"
-            rest="${asset#"$name-$f-"}"
-          fi
-        fi
-      done
-      [[ -n "$best" ]] || continue
-      tv=""
-      for t in $(echo "$ft_lines" | awk -v f="$best" '$1==f {print $2}' | sort -u); do
-        if [[ "$rest" == *".$t" ]]; then
-          tv="${rest%".$t"}"
-          break
-        fi
-      done
-      [[ -n "$tv" ]] || continue
-      ver_map["$best|$asset"]="$tv"
-      case " $folder_set " in *" $best "*) ;; *) folder_set="$folder_set $best" ;; esac
+# 删除指定 release 中归属某 binary 且不在 keep_set 内的 asset（keep_set 为空则全部删除）
+clean_release_binary() {
+  local release_tag="$1" name="$2"
+  shift 2
+  local keep_set=("$@")
+  local list asset k keep
+  list=$(gh release view "$release_tag" --repo "$RELEASE_REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)
+  local -a del=()
+  for asset in $list; do
+    [[ "$(asset_owner "$asset")" == "$name" ]] || continue
+    keep=false
+    for k in "${keep_set[@]}"; do
+      [[ "$k" == "$asset" ]] && { keep=true; break; }
     done
-
-    # 每个 folder 保留最近 keep 个版本，删除其余
-    local folder key tv vlist keep_list
-    for folder in $folder_set; do
-      vlist=""
-      for key in "${!ver_map[@]}"; do
-        [[ "$key" == "$folder|"* ]] || continue
-        vlist+="${ver_map[$key]}"$'\n'
-      done
-      keep_list=$(printf '%b' "$vlist" | sed '/^$/d' | sort -u -V | tail -n 1)
-      for key in "${!ver_map[@]}"; do
-        [[ "$key" == "$folder|"* ]] || continue
-        tv="${ver_map[$key]}"
-        if ! printf '%b' "$keep_list" | grep -qxF "$tv"; then
-          echo "    🗑️  删除 $release_tag 旧 asset: ${key#*|}"
-          gh release delete-asset "$release_tag" "${key#*|}" --repo "$RELEASE_REPO" --yes || true
-        fi
-      done
-    done
-    unset ver_map
+    [[ "$keep" == false ]] && del+=("$asset")
+  done
+  for asset in "${del[@]}"; do
+    echo "    🗑️  删除 $release_tag 旧 asset: $asset"
+    gh release delete-asset "$release_tag" "$asset" --repo "$RELEASE_REPO" --yes || true
   done
 }
 
 # ---------- 单个二进制处理 ----------
-# 检查 pkgs 中某程序当前版本 asset 是否齐备（差分自愈判断）
+# 检查 pkgs 中某程序在 manifest 里声明的 asset 是否齐备（差分自愈判断）
 release_assets_complete() {
-  local name="$1" version="$2"
-  local ac jj folder type asset_name
-  ac=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets | length" "$CONFIG_FILE")
-  for ((jj=0; jj<ac; jj++)); do
-    folder=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[$jj].folder" "$CONFIG_FILE")
-    type=$(yq -r ".binaries[] | select(.name==\"$name\") | .assets[$jj].type" "$CONFIG_FILE")
-    asset_name="$name-$folder-$version.$type"
-    [[ -n "${release_asset_set[$asset_name]:-}" ]] || return 1
-  done
+  local name="$1"
+  local expected
+  expected=$(jq -r --arg n "$name" '.binaries[$n].assets[].file' "$MANIFEST" 2>/dev/null || true)
+  [[ -n "$expected" ]] || return 1
+  local f
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    [[ -n "${release_asset_set[$f]:-}" ]] || return 1
+  done <<< "$expected"
   return 0
 }
 
@@ -261,7 +280,7 @@ process_binary() {
 
   # 差分：版本未变且 release asset 齐备才跳过；release 被删/不齐或 --force 则重建
   if [[ "$FORCE_REBUILD" != true && "${old_tag[$name]:-}" == "$tag" ]]; then
-    if release_assets_complete "$name" "$version"; then
+    if release_assets_complete "$name"; then
       echo "    ⏭️  跳过 $name：$version 未变（release 完好）"
       return 0
     else
@@ -274,9 +293,9 @@ process_binary() {
   local assets_json="[]" j asset_name asset_url asset_size
 
   for ((j=0; j<assets_count; j++)); do
-    local match folder type exec extract
+    local match dir type exec extract
     match=$(yq -r ".binaries[$i].assets[$j].match" "$CONFIG_FILE")
-    folder=$(yq -r ".binaries[$i].assets[$j].folder" "$CONFIG_FILE")
+    dir=$(yq -r ".binaries[$i].assets[$j].dir" "$CONFIG_FILE")
     type=$(yq -r ".binaries[$i].assets[$j].type" "$CONFIG_FILE")
     exec=$(yq -r ".binaries[$i].assets[$j].exec // \"\"" "$CONFIG_FILE")
     extract=$(yq -r ".binaries[$i].assets[$j].extract // false" "$CONFIG_FILE")
@@ -296,7 +315,7 @@ process_binary() {
     if ! curl -fL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 600 \
         -o "$pkgfile" "$asset_url"; then
       echo "    ❌ 下载失败"
-      failures+=("$name/$folder: 下载失败")
+      failures+=("$name/$dir: 下载失败")
       continue
     fi
 
@@ -304,7 +323,7 @@ process_binary() {
     down_size=$(stat -c%s "$pkgfile")
     if [[ "$down_size" != "$asset_size" ]]; then
       echo "    ❌ 大小校验失败: $down_size != $asset_size"
-      failures+=("$name/$folder: 大小不符")
+      failures+=("$name/$dir: 大小不符")
       rm -f "$pkgfile"
       continue
     fi
@@ -312,20 +331,21 @@ process_binary() {
 
     if ! verify_asset "$name" "$verify" "$repo" "$tag" "$asset_name" "$pkgfile" "$sha256" "$asset_url"; then
       echo "    ❌ 签名/checksum 校验失败"
-      failures+=("$name/$folder: 签名/checksum 校验失败")
+      failures+=("$name/$dir: 签名/checksum 校验失败")
       rm -f "$pkgfile"
       continue
     fi
 
-    # 统一命名 name-folder-version.type（重命名不改变内容，sha256 不变）
-    local new_name="$name-$folder-$version.$type"
+    # 统一命名 {name}-{上游原名}（大小写不敏感去重程序名前缀）
+    local new_name
+    new_name=$(normalize_name "$name" "$asset_name")
     mv -f "$pkgfile" "$stage_dir/$new_name"
 
-    assets_json=$(jq --arg folder "$folder" --arg file "$new_name" --arg type "$type" \
+    assets_json=$(jq --arg dir "$dir" --arg file "$new_name" --arg type "$type" \
       --arg exec "$exec" --arg extract "$extract" --arg sha256 "$sha256" \
       --arg size "$asset_size" --arg source "$asset_url" --arg version "$version" --arg tag "$tag" \
       --arg mirror "https://github.com/$RELEASE_REPO/releases/download/$RELEASE_TAG/$new_name" \
-      '. + [{folder:$folder, file:$file, type:$type, exec:$exec, extract:$extract, sha256:$sha256, size:$size, source:$source, mirror:$mirror, version:$version, tag:$tag}]' \
+      '. + [{dir:$dir, file:$file, type:$type, exec:$exec, extract:$extract, sha256:$sha256, size:$size, source:$source, mirror:$mirror, version:$version, tag:$tag}]' \
       <<<"$assets_json")
   done
 
@@ -355,23 +375,27 @@ done
 if [[ ${#pending_names[@]} -gt 0 ]]; then
   # 先建备份、再建主 release：pkgs 创建/发布日期更新，保证 Release 列表排在 pkgs-prev 上方
   if ensure_release "$BACKUP_TAG" nolatest && ensure_release "$RELEASE_TAG"; then
-    # 1) 先复制各程序旧版本到 backup（此时 pkgs 仍为旧版）
+    # 1) 每个待更新 binary：旧版复制到 backup，并记录复制集合
     for bn in "${pending_names[@]}"; do
       copy_prev_to_backup "$bn"
     done
-    # 2) 再上传新版本到 latest
+    # 2) 清理 backup 中归属这些 binary 且不在复制集合里的资产（清除更旧残留）
+    for bn in "${pending_names[@]}"; do
+      clean_release_binary "$BACKUP_TAG" "$bn" ${BACKUP_COPIED["$bn"]}
+    done
+    # 3) 清理 pkgs 中归属这些 binary 的旧资产（整组替换）
+    for bn in "${pending_names[@]}"; do
+      clean_release_binary "$RELEASE_TAG" "$bn"
+    done
+    # 4) 上传新资产到 latest
     echo "📤 上传到 $RELEASE_TAG ..."
     echo "    👉 上传前 $RELEASE_TAG:"
     release_assets "$RELEASE_TAG"
     if upload_staged; then
-      echo "✅ 上传完成，开始清理旧版本"
+      echo "✅ 上传完成"
       echo "    👉 上传后 $RELEASE_TAG:"
       release_assets "$RELEASE_TAG"
-      prune_release "$RELEASE_TAG"
-      prune_release "$BACKUP_TAG"
-      echo "    👉 清理后 $RELEASE_TAG:"
-      release_assets "$RELEASE_TAG"
-      echo "    👉 清理后 $BACKUP_TAG:"
+      echo "    👉 $BACKUP_TAG 状态:"
       release_assets "$BACKUP_TAG"
 
       # 上传后校验：pkgs 必须有 asset，否则视为失败（防"提示成功实则为空"）
@@ -382,7 +406,7 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
         failures+=("上传后 $RELEASE_TAG 无任何 asset")
       fi
 
-      # 3) 合并 manifest
+      # 5) 合并 manifest
       local_now=$(date -u +%FT%TZ)
       tmp_manifest="$MANIFEST.tmp"
       cp "$MANIFEST" "$tmp_manifest"
