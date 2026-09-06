@@ -13,10 +13,7 @@ set -uo pipefail
 
 CONFIG_FILE=".github/workflows/binaries.conf"
 MANIFEST="manifest.json"
-REPORT=".update_report.md"
 RELEASE_TAG="pkgs"          # 最新二进制
-# 备份 release 的 tag 名必须字典序小于 pkgs（如 backup），
-# 否则如 pkgs-prev 会排在 pkgs 上方（GitHub 按 tag 名字典序降序排 Release 列表）
 BACKUP_TAG="backup"         # 次新备份（回滚用）
 STAGE_ROOT="$(mktemp -d)"
 trap 'rm -rf "$STAGE_ROOT"' EXIT
@@ -24,7 +21,6 @@ trap 'rm -rf "$STAGE_ROOT"' EXIT
 RELEASE_REPO="${GITHUB_REPOSITORY:-$(yq -r '.release_repo // ""' "$CONFIG_FILE" 2>/dev/null)}"
 [[ -n "$RELEASE_REPO" ]] || { echo "❌ 未设置 release_repo 或 GITHUB_REPOSITORY"; exit 1; }
 
-rm -f "$REPORT"
 failures=()
 declare -a pending_names=()
 declare -a pending_entries=()
@@ -294,12 +290,9 @@ process_binary() {
   local assets_json="[]" j asset_name asset_url asset_size
 
   for ((j=0; j<assets_count; j++)); do
-    local match dir type exec extract
+    local match type
     match=$(yq -r ".binaries[$i].assets[$j].match" "$CONFIG_FILE")
-    dir=$(yq -r ".binaries[$i].assets[$j].dir" "$CONFIG_FILE")
     type=$(yq -r ".binaries[$i].assets[$j].type" "$CONFIG_FILE")
-    exec=$(yq -r ".binaries[$i].assets[$j].exec // \"\"" "$CONFIG_FILE")
-    extract=$(yq -r ".binaries[$i].assets[$j].extract // false" "$CONFIG_FILE")
 
     asset_name=$(select_asset "$release_json" "$match" "$type")
     if [[ -z "$asset_name" ]]; then
@@ -316,7 +309,7 @@ process_binary() {
     if ! curl -fL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 600 \
         -o "$pkgfile" "$asset_url"; then
       echo "    ❌ 下载失败"
-      failures+=("$name/$dir: 下载失败")
+      failures+=("$name: 下载失败")
       continue
     fi
 
@@ -324,7 +317,7 @@ process_binary() {
     down_size=$(stat -c%s "$pkgfile")
     if [[ "$down_size" != "$asset_size" ]]; then
       echo "    ❌ 大小校验失败: $down_size != $asset_size"
-      failures+=("$name/$dir: 大小不符")
+      failures+=("$name: 大小不符")
       rm -f "$pkgfile"
       continue
     fi
@@ -332,7 +325,7 @@ process_binary() {
 
     if ! verify_asset "$verify" "$repo" "$tag" "$asset_name" "$pkgfile" "$sha256" "$asset_url"; then
       echo "    ❌ 签名/checksum 校验失败"
-      failures+=("$name/$dir: 签名/checksum 校验失败")
+      failures+=("$name: 签名/checksum 校验失败")
       rm -f "$pkgfile"
       continue
     fi
@@ -342,11 +335,10 @@ process_binary() {
     new_name=$(normalize_name "$name" "$asset_name")
     mv -f "$pkgfile" "$stage_dir/$new_name"
 
-    assets_json=$(jq --arg dir "$dir" --arg file "$new_name" --arg type "$type" \
-      --arg exec "$exec" --arg extract "$extract" --arg sha256 "$sha256" \
+    assets_json=$(jq --arg file "$new_name" --arg type "$type" --arg sha256 "$sha256" \
       --arg size "$asset_size" --arg source "$asset_url" --arg version "$version" --arg tag "$tag" \
       --arg mirror "https://github.com/$RELEASE_REPO/releases/download/$RELEASE_TAG/$new_name" \
-      '. + [{dir:$dir, file:$file, type:$type, exec:$exec, extract:$extract, sha256:$sha256, size:$size, source:$source, mirror:$mirror, version:$version, tag:$tag}]' \
+      '. + [{file:$file, type:$type, sha256:$sha256, size:$size, source:$source, mirror:$mirror, version:$version, tag:$tag}]' \
       <<<"$assets_json")
   done
 
@@ -374,8 +366,6 @@ done
 
 # ---------- 统一发布到双 release ----------
 if [[ ${#pending_names[@]} -gt 0 ]]; then
-  # 先建备份、再建主 release；GitHub 按 tag 名字典序降序排列表，
-  # backup < pkgs，故 pkgs 排在上方
   ok=true
   ensure_release "$BACKUP_TAG" nolatest || ok=false
   ensure_release "$RELEASE_TAG" || ok=false
@@ -440,14 +430,23 @@ if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
   echo "✅ $RELEASE_TAG 已标记为 Latest"
 fi
 
+# ---------- 清理过期条目（config 是唯一事实来源，每次运行都执行） ----------
+# 1) manifest 删除已不在 config 的 binary 条目（如曾被移除的 xray）
+valid=$(yq -r '.binaries[].name' "$CONFIG_FILE" 2>/dev/null | jq -R -s -c 'split("\n") | map(select(. != ""))')
+jq --argjson valid "$valid" '.binaries |= with_entries(select(.key as $k | $valid | index($k)))' "$MANIFEST" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
+
+# 2) 删除两个 release 中不属于任何配置 binary 的孤儿资产（manifest.json 是工作流挂载的索引，保留）
+for tag in "$RELEASE_TAG" "$BACKUP_TAG"; do
+  while read -r a; do
+    [[ -n "$a" && "$a" != "manifest.json" && -z "$(asset_owner "$a")" ]] && {
+      echo "    🗑️  清理孤儿资产 $tag: $a"
+      gh release delete-asset "$tag" "$a" --repo "$RELEASE_REPO" --yes || true
+    }
+  done < <(gh release view "$tag" --repo "$RELEASE_REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)
+done
+
 # ---------- 汇总 ----------
 if [[ ${#failures[@]} -gt 0 ]]; then
-  {
-    echo "# 🤖 二进制更新报告 $(date '+%F %T')"
-    echo
-    echo "本次更新存在失败项："
-    printf -- '- %s\n' "${failures[@]}"
-  } > "$REPORT"
   jq --arg s "$(printf '%s\n' "${failures[@]}")" \
     '.status = "partial"' "$MANIFEST" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
   echo "⚠️  存在失败项："
