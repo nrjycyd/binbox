@@ -59,12 +59,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # updated_at 从 UTC 转东八区（+8 小时）显示
+          UPDATED_EPOCH=$(date -d "$(jq -r '.updated_at' manifest.json)" +%s 2>/dev/null)
+          if [[ -n "$UPDATED_EPOCH" ]]; then
+            UPDATED_AT=$(date -u -d "@$((UPDATED_EPOCH + 28800))" '+%Y-%m-%d %H:%M:%S')
+          else
+            UPDATED_AT=$(jq -r '.updated_at' manifest.json)
+          fi
           # 从 manifest.json 生成发布说明
-          RELEASE_NOTES=$(jq -r '
+          RELEASE_NOTES=$(jq -r --arg updated "$UPDATED_AT" '
             "## 📦 二进制镜像更新\n\n" +
             "| 程序 | 版本 | 文件数 |\n|---|---|---|\n" +
             ([.binaries | to_entries[] | "| \(.key) | \(.value.version) | \(.value.assets | length) |"] | join("\n")) +
-            "\n\n- 更新于: " + .updated_at +
+            "\n\n- 更新于: " + $updated + " (UTC+8)" +
             "\n- 状态: " + .status +
             "\n- 最新 release: `pkgs` · 备份 release: `pkgs-prev`"
           ' manifest.json)
