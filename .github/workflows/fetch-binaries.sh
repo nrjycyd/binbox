@@ -76,7 +76,7 @@ done < <(yq -r '.binaries[].name' "$CONFIG_FILE" 2>/dev/null || true)
 # 例：sing-box-releases + sing-box-1.14.0-... -> sing-box-releases-1.14.0-...
 normalize_name() {
   local name="$1" original="$2"
-  local lower_name="${name,,}" lower_orig="${original,,}"
+  local lower_orig="${original,,}"
   local cand="$name" match="" after="" prev=""
   while [[ -n "$cand" ]]; do
     if [[ "$lower_orig" == "${cand,,}"* ]]; then
@@ -137,7 +137,7 @@ select_asset() {
 }
 
 verify_asset() {
-  local name="$1" mode="$2" repo="$3" tag="$4" asset_name="$5" pkgfile="$6" sha256="$7" asset_url="$8"
+  local mode="$1" repo="$2" tag="$3" asset_name="$4" pkgfile="$5" sha256="$6" asset_url="$7"
   case "$mode" in
     checksums)
       local csums
@@ -172,8 +172,7 @@ ensure_release() {
 }
 
 # 上传 staging 内所有文件到单一 release（同名覆盖）
-# 只取 $STAGE_ROOT 二级子目录（$STAGE_ROOT/<name>/<file>）内的真实 asset，
-# 排除根目录的 *_api_err 等 scratch 空文件与 *.minisig 临时文件
+# 只取 $STAGE_ROOT 二级子目录（$STAGE_ROOT/<name>/<file>）内的真实 asset，排除 *.minisig 临时文件
 upload_staged() {
   local -a staged=()
   while IFS= read -r f; do staged+=("$f"); done < <(find "$STAGE_ROOT" -mindepth 2 -type f ! -name '*.minisig' | sort)
@@ -331,7 +330,7 @@ process_binary() {
     fi
     sha256=$(sha256sum "$pkgfile" | awk '{print $1}')
 
-    if ! verify_asset "$name" "$verify" "$repo" "$tag" "$asset_name" "$pkgfile" "$sha256" "$asset_url"; then
+    if ! verify_asset "$verify" "$repo" "$tag" "$asset_name" "$pkgfile" "$sha256" "$asset_url"; then
       echo "    ❌ 签名/checksum 校验失败"
       failures+=("$name/$dir: 签名/checksum 校验失败")
       rm -f "$pkgfile"
