@@ -110,8 +110,18 @@ ensure_release() {
 upload_staged() {
   local -a staged=()
   while IFS= read -r f; do staged+=("$f"); done < <(find "$STAGE_ROOT" -mindepth 2 -type f ! -name '*.minisig' | sort)
+  echo "    📋 待上传文件数: ${#staged[@]}"
+  local f
+  for f in "${staged[@]}"; do echo "      - $(basename "$f")"; done
   [[ ${#staged[@]} -gt 0 ]] || return 1
   gh release upload "$RELEASE_TAG" "${staged[@]}" --repo "$RELEASE_REPO" --clobber
+}
+
+# 打印某 release 的 asset 数量与列表（诊断用）
+release_assets() {
+  local tag="$1"
+  gh release view "$tag" --repo "$RELEASE_REPO" --json assets \
+    --jq '"      \(.assets | length) 个: " + ([.assets[].name] | join(", "))' 2>/dev/null || echo "      (无法读取 $tag assets)"
 }
 
 # 将 pkgs 中某程序的旧版本 asset 复制到 backup release（须在更新 pkgs 之前执行）
@@ -312,10 +322,27 @@ if [[ ${#pending_names[@]} -gt 0 ]]; then
       copy_prev_to_backup "$bn"
     done
     # 2) 再上传新版本到 latest
+    echo "📤 上传到 $RELEASE_TAG ..."
+    echo "    👉 上传前 $RELEASE_TAG:"
+    release_assets "$RELEASE_TAG"
     if upload_staged; then
       echo "✅ 上传完成，开始清理旧版本"
+      echo "    👉 上传后 $RELEASE_TAG:"
+      release_assets "$RELEASE_TAG"
       prune_release "$RELEASE_TAG"
       prune_release "$BACKUP_TAG"
+      echo "    👉 清理后 $RELEASE_TAG:"
+      release_assets "$RELEASE_TAG"
+      echo "    👉 清理后 $BACKUP_TAG:"
+      release_assets "$BACKUP_TAG"
+
+      # 上传后校验：pkgs 必须有 asset，否则视为失败（防"提示成功实则为空"）
+      local pkg_count
+      pkg_count=$(gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json assets --jq '.assets | length' 2>/dev/null || echo 0)
+      if [[ "$pkg_count" == "0" ]]; then
+        echo "❌ 上传后 $RELEASE_TAG 为空"
+        failures+=("上传后 $RELEASE_TAG 无任何 asset")
+      fi
 
       # 3) 合并 manifest
       local_now=$(date -u +%FT%TZ)
