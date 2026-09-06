@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_at": "2026-09-06T07:04:17Z",
+  "updated_at": "2026-09-06T07:07:37Z",
   "status": "partial",
   "binaries": {
     "mosdns": {
@@ -66,19 +66,6 @@
           "size": "9478446",
           "source": "https://github.com/pymumu/smartdns/releases/download/Release48.4/smartdns.1.2026.08.05-0921.x86_64-linux-all.tar.gz",
           "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/smartdns-1.2026.08.05-0921.x86_64-linux-all.tar.gz",
-          "version": "Release48.4",
-          "tag": "Release48.4"
-        },
-        {
-          "dir": "x86_64-openwrt",
-          "file": "smartdns-1.2026.08.05-0921.x86_64-openwrt-all.ipk",
-          "type": "ipk",
-          "exec": "smartdns",
-          "extract": "false",
-          "sha256": "d82c17c7341c4f27b56bb9393be00d2678bda3fff4efd8aa17f599290e33de46",
-          "size": "9442168",
-          "source": "https://github.com/pymumu/smartdns/releases/download/Release48.4/smartdns.1.2026.08.05-0921.x86_64-openwrt-all.ipk",
-          "mirror": "https://github.com/nrjycyd/homelab/releases/download/pkgs/smartdns-1.2026.08.05-0921.x86_64-openwrt-all.ipk",
           "version": "Release48.4",
           "tag": "Release48.4"
         }
@@ -369,7 +356,7 @@
     "xray": {
       "version": "26.3.27",
       "tag": "v26.3.27",
-      "prev_tag": "",
+      "prev_tag": "v26.3.27",
       "repo": "XTLS/Xray-core",
       "assets": [
         {
