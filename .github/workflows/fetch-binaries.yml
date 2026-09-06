@@ -63,11 +63,11 @@ jobs:
 
           # 同 tag 复用：pkgs 已存在则刷新说明并追加 manifest，不存在则创建
           if gh release view pkgs >/dev/null 2>&1; then
-              gh release edit pkgs --notes "$RELEASE_NOTES"
+              gh release edit pkgs --notes "$RELEASE_NOTES" --latest
               gh release upload pkgs manifest.json --clobber
               echo "✅ Release 已存在，说明已更新"
           else
-              gh release create pkgs manifest.json --title "pkgs" --notes "$RELEASE_NOTES"
+              gh release create pkgs manifest.json --title "pkgs" --notes "$RELEASE_NOTES" --latest
               echo "✅ Release 创建完成"
           fi
 
